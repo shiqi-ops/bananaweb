@@ -136,7 +136,7 @@ def create_app():
     # Health check endpoint
     @app.route('/health')
     def health_check():
-        return {'status': 'ok', 'message': 'Banana Slides API is running'}
+        return {'status': 'ok', 'message': '智绘视界 API is running'}
 
     # Access code verification
     @app.route('/api/access-code/check', methods=['GET'])
@@ -176,7 +176,7 @@ def create_app():
     @app.route('/')
     def index():
         return {
-            'name': 'Banana Slides API',
+            'name': '智绘视界 API',
             'version': '1.0.0',
             'description': 'AI-powered PPT generation service',
             'endpoints': {
@@ -351,7 +351,7 @@ if __name__ == '__main__':
     logging.info(
         "\n"
         "╔══════════════════════════════════════╗\n"
-        "║   🍌 Banana Slides API Server 🍌   ║\n"
+        "║   智绘视界 API Server   ║\n"
         "╚══════════════════════════════════════╝\n"
         f"Server starting on: http://localhost:{port}\n"
         f"Output Language: {Config.OUTPUT_LANGUAGE}\n"

@@ -27,8 +27,8 @@ const homeI18n = {
       theme: { label: '主题模式', light: '浅色', dark: '深色', system: '跟随系统' }
     },
     home: {
-      title: '蕉幻',
-      subtitle: 'Vibe your slides like vibe coding',
+      title: '智绘视界',
+      subtitle: '柚出新裁，让每一份PPT都更懂你的想法与风格',
       tagline: '基于 nano banana pro🍌 的原生 AI PPT 生成器',
       features: {
         oneClick: '一句话生成 PPT',
@@ -104,7 +104,7 @@ const homeI18n = {
     },
     home: {
       title: 'Banana Slides',
-      subtitle: 'Vibe your slides like vibe coding',
+      subtitle: '柚出新裁，让每一份PPT都更懂你的想法与风格',
       tagline: 'AI-native PPT generator powered by nano banana pro🍌',
       features: {
         oneClick: 'One-click PPT generation',
@@ -194,6 +194,9 @@ export const Home: React.FC = () => {
   const [isUploadingFile, setIsUploadingFile] = useState(false);
   const [isFileSelectorOpen, setIsFileSelectorOpen] = useState(false);
   const [previewFileId, setPreviewFileId] = useState<string | null>(null);
+  const [isCustomizationModalOpen, setIsCustomizationModalOpen] = useState(false);
+  const [isContactModalOpen, setIsContactModalOpen] = useState(false);
+  const [selectedContact, setSelectedContact] = useState<'xiaohongshu' | 'douyin' | 'wechat' | null>(null);
 
   const [useTemplateStyle, setUseTemplateStyle] = useState(false);
   const [templateStyle, setTemplateStyle] = useState('');
@@ -644,6 +647,9 @@ export const Home: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-orange-50/30 to-pink-50/50 dark:from-background-primary dark:via-background-primary dark:to-background-primary relative overflow-hidden">
       {/* 背景装饰元素 - 仅在亮色模式显示 */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none dark:hidden">
+        {/* 背景图片 */}
+        <div className="absolute top-0 left-0 right-0 h-3/4 bg-cover bg-center opacity-55" style={{ backgroundImage: 'url(/background.png)' }}></div>
+        {/* 原有的装饰元素 */}
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-banana-500/10 rounded-full blur-3xl animate-pulse"></div>
         <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-orange-400/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-yellow-400/5 rounded-full blur-3xl"></div>
@@ -657,12 +663,12 @@ export const Home: React.FC = () => {
             <div className="flex items-center">
               <img
                 src="/logo.png"
-                alt="蕉幻 Banana Slides Logo"
+                alt="智绘视界 Logo"
                 className="h-10 md:h-12 w-auto rounded-lg object-contain"
               />
             </div>
-            <span className="text-xl md:text-2xl font-bold bg-gradient-to-r from-banana-600 via-orange-500 to-pink-500 bg-clip-text text-transparent">
-              蕉幻
+            <span className="text-xl md:text-2xl font-bold bg-gradient-to-r from-banana-600 via-orange-500 to-pink-500 bg-clip-text text-transparent tracking-wider">
+              智绘视界
             </span>
           </div>
           <div className="flex items-center gap-2 md:gap-3">
@@ -790,11 +796,7 @@ export const Home: React.FC = () => {
                 </>
               )}
             </div>
-            {/* 分隔线 */}
-            <div className="h-5 w-px bg-gray-300 dark:bg-border-primary mx-1" />
-            {/* GitHub 仓库卡片 */}
-            <GithubRepoCard />
-            {/* 分隔线 */}
+
           </div>
         </div>
       </nav>
@@ -809,17 +811,30 @@ export const Home: React.FC = () => {
           </div>
 
           <h1 className="text-4xl md:text-6xl lg:text-7xl font-extrabold leading-tight">
-            <span className="bg-gradient-to-r from-yellow-600 via-orange-500 to-pink-500 dark:from-banana-dark dark:via-banana dark:to-banana-light bg-clip-text text-transparent dark:italic" style={{
+            <span className="bg-gradient-to-r from-yellow-600 via-orange-500 to-pink-500 dark:from-banana-dark dark:via-banana dark:to-banana-light bg-clip-text text-transparent dark:italic tracking-wider" style={{
               backgroundSize: '200% auto',
               animation: 'gradient 3s ease infinite',
             }}>
-              {i18n.language?.startsWith('zh') ? `${t('home.title')} · Banana Slides` : 'Banana Slides'}
+              {i18n.language?.startsWith('zh') ? `${t('home.title')}` : 'YouChuXinCai'}
             </span>
           </h1>
 
           <p className="text-lg md:text-xl text-gray-600 dark:text-foreground-secondary max-w-2xl mx-auto font-light">
             {t('home.subtitle')}
           </p>
+
+          {/* 私人定制选项 */}
+          <div className="mt-6 md:mt-8">
+            <Button
+              variant="primary"
+              size="md"
+              icon={<Palette size={18} />}
+              onClick={() => setIsCustomizationModalOpen(true)}
+              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+            >
+              私人定制服务
+            </Button>
+          </div>
 
           {/* 特性标签 */}
           <div className="flex flex-wrap items-center justify-center gap-2 md:gap-3 pt-4">
@@ -1152,6 +1167,179 @@ export const Home: React.FC = () => {
         isOpen={isHelpModalOpen}
         onClose={() => setIsHelpModalOpen(false)}
       />
+      {/* 私人定制服务模态框 */}
+      {isCustomizationModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setIsCustomizationModalOpen(false)} />
+          <div className="relative bg-white dark:bg-background-secondary rounded-2xl shadow-2xl dark:shadow-none border dark:border-border-primary max-w-md w-full p-6 md:p-8">
+            <button
+              onClick={() => setIsCustomizationModalOpen(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:text-foreground-tertiary dark:hover:text-foreground-secondary"
+            >
+              ✕
+            </button>
+            <div className="text-center space-y-4">
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white">私人定制服务</h3>
+              <p className="text-gray-600 dark:text-foreground-secondary">
+                为您提供专业的 PPT 定制服务，让您的演示更加个性化和专业
+              </p>
+              <div className="space-y-3 text-left">
+                <div className="flex items-start gap-2">
+                  <div className="mt-1 text-purple-600 dark:text-purple-400">✓</div>
+                  <div>
+                    <span className="font-medium">个性化模板设计</span>
+                    <p className="text-sm text-gray-500 dark:text-foreground-tertiary">根据您的品牌风格定制专属模板</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <div className="mt-1 text-purple-600 dark:text-purple-400">✓</div>
+                  <div>
+                    <span className="font-medium">专业内容优化</span>
+                    <p className="text-sm text-gray-500 dark:text-foreground-tertiary">由专业团队帮您优化 PPT 内容和结构</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <div className="mt-1 text-purple-600 dark:text-purple-400">✓</div>
+                  <div>
+                    <span className="font-medium">定制化视觉元素</span>
+                    <p className="text-sm text-gray-500 dark:text-foreground-tertiary">根据您的需求创建专属图表、插图和动画</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <div className="mt-1 text-purple-600 dark:text-purple-400">✓</div>
+                  <div>
+                    <span className="font-medium">一对一服务</span>
+                    <p className="text-sm text-gray-500 dark:text-foreground-tertiary">专业顾问全程跟踪，确保最终效果符合您的期望</p>
+                  </div>
+                </div>
+              </div>
+              <div className="pt-4 space-y-3">
+                <Button
+                  variant="primary"
+                  size="md"
+                  className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+                  onClick={() => setIsContactModalOpen(true)}
+                >
+                  立即咨询
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="md"
+                  className="w-full"
+                  onClick={() => setIsCustomizationModalOpen(false)}
+                >
+                  取消
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 联系方式模态框 */}
+      {isContactModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setIsContactModalOpen(false)} />
+          <div className="relative bg-white dark:bg-background-secondary rounded-2xl shadow-2xl dark:shadow-none border dark:border-border-primary max-w-md w-full p-6 md:p-8">
+            <button
+              onClick={() => setIsContactModalOpen(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:text-foreground-tertiary dark:hover:text-foreground-secondary"
+            >
+              ✕
+            </button>
+            <div className="text-center space-y-4">
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white">联系我们</h3>
+              <p className="text-gray-600 dark:text-foreground-secondary">
+                选择以下任意渠道联系我们，我们将为您提供专业的定制服务
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4">
+                {/* 小红书 */}
+                <div className="border border-gray-200 dark:border-border-primary rounded-lg p-4 hover:border-purple-400 dark:hover:border-purple-500 transition-colors cursor-pointer" onClick={() => setSelectedContact('xiaohongshu')}>
+                  <div className="flex flex-col items-center space-y-2">
+                    <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
+                      <span className="text-red-500 dark:text-red-400 font-bold text-xl">小红书</span>
+                    </div>
+                    <span className="text-sm font-medium">小红书</span>
+                  </div>
+                </div>
+                {/* 抖音 */}
+                <div className="border border-gray-200 dark:border-border-primary rounded-lg p-4 hover:border-purple-400 dark:hover:border-purple-500 transition-colors cursor-pointer" onClick={() => setSelectedContact('douyin')}>
+                  <div className="flex flex-col items-center space-y-2">
+                    <div className="w-16 h-16 bg-black dark:bg-gray-800 rounded-full flex items-center justify-center">
+                      <span className="text-white font-bold text-xl">抖音</span>
+                    </div>
+                    <span className="text-sm font-medium">抖音</span>
+                  </div>
+                </div>
+                {/* 微信 */}
+                <div className="border border-gray-200 dark:border-border-primary rounded-lg p-4 hover:border-purple-400 dark:hover:border-purple-500 transition-colors cursor-pointer" onClick={() => setSelectedContact('wechat')}>
+                  <div className="flex flex-col items-center space-y-2">
+                    <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
+                      <span className="text-green-500 dark:text-green-400 font-bold text-xl">微信</span>
+                    </div>
+                    <span className="text-sm font-medium">微信</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 具体联系方式模态框 */}
+      {selectedContact && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setSelectedContact(null)} />
+          <div className="relative bg-white dark:bg-background-secondary rounded-2xl shadow-2xl dark:shadow-none border dark:border-border-primary max-w-md w-full p-6 md:p-8">
+            <button
+              onClick={() => setSelectedContact(null)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:text-foreground-tertiary dark:hover:text-foreground-secondary"
+            >
+              ✕
+            </button>
+            <div className="text-center space-y-4">
+              {selectedContact === 'xiaohongshu' && (
+                <>
+                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white">小红书</h3>
+                  <div className="flex flex-col items-center space-y-4">
+                    <img src="/xiaohongshu.jpg" alt="小红书二维码" className="w-64 h-64 object-contain" />
+                    <div className="text-left w-full">
+                      <p className="text-gray-700 dark:text-foreground-secondary">小红书号：94114138719</p>
+                      <p className="text-gray-600 dark:text-foreground-tertiary mt-2">扫描二维码，在小红书找到我们</p>
+                    </div>
+                  </div>
+                </>
+              )}
+              {selectedContact === 'douyin' && (
+                <>
+                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white">抖音</h3>
+                  <div className="flex flex-col items-center space-y-4">
+                    <img src="/douyin.jpg" alt="抖音二维码" className="w-64 h-64 object-contain" />
+                    <div className="text-left w-full">
+                      <p className="text-gray-700 dark:text-foreground-secondary">抖音号：43016201621</p>
+                      <p className="text-gray-600 dark:text-foreground-tertiary mt-2">扫描二维码，在抖音找到我们</p>
+                    </div>
+                  </div>
+                </>
+              )}
+              {selectedContact === 'wechat' && (
+                <>
+                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white">微信</h3>
+                  <div className="flex flex-col items-center space-y-4">
+                    <div className="w-64 h-64 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center">
+                      <span className="text-2xl font-bold text-gray-500 dark:text-gray-400">微信号：17882350167</span>
+                    </div>
+                    <div className="text-left w-full">
+                      <p className="text-gray-700 dark:text-foreground-secondary">微信号：17882350167</p>
+                      <p className="text-gray-600 dark:text-foreground-tertiary mt-2">添加微信，直接联系我们</p>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       {/* Footer */}
       <Footer />
     </div>

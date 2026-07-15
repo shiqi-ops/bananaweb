@@ -12,15 +12,15 @@ import { useTranslation } from 'react-i18next';
 const i18nDict = {
   zh: {
     guide: {
-      brand: '蕉幻 · Banana Slides',
+      brand: '智绘视界',
       setup: '快速开始',
       setupSub: '完成基础配置，开启 AI 创作之旅',
       features: '功能介绍',
       featuresSub: '探索如何使用 AI 快速创建精美 PPT',
       gallery: '结果案例',
-      gallerySub: '以下是使用蕉幻生成的 PPT 案例展示',
+      gallerySub: '以下是使用智绘视界生成的 PPT 案例展示',
       galleryMore: '查看更多使用案例',
-      hi: '欢迎使用蕉幻！',
+      hi: '欢迎使用智绘视界！',
       hiSub: '在开始前，让我们先完成基础配置',
       s1: '配置 API Key',
       s1d: '前往设置页面，配置项目需要使用的API服务，包括：',
@@ -48,15 +48,15 @@ const i18nDict = {
   },
   en: {
     guide: {
-      brand: 'Banana Slides',
+      brand: 'YouChuXinCai',
       setup: 'Quick Start',
       setupSub: 'Complete basic configuration and start your AI creation journey',
       features: 'Features',
       featuresSub: 'Explore how to use AI to quickly create beautiful PPT',
       gallery: 'Showcases',
-      gallerySub: 'Here are PPT examples generated with Banana Slides',
+      gallerySub: 'Here are PPT examples generated with YouChuXinCai',
       galleryMore: 'View more examples',
-      hi: 'Welcome to Banana Slides!',
+      hi: 'Welcome to YouChuXinCai!',
       hiSub: "Let's complete the basic configuration before you start",
       s1: 'Configure API Key',
       s1d: 'Go to settings page to configure the API services needed for the project, including:',
@@ -160,7 +160,7 @@ const renderSetupPage: PageRenderer = ({ t, lang, navigate, onClose }) => {
     <div className="space-y-6">
       <div className="text-center space-y-3">
         <div className="inline-flex items-center justify-center mr-4">
-          <img src="/logo.png" alt="Banana Slides Logo" className="h-16 w-16 object-contain" />
+          <img src="/logo.png" alt="智绘视界 Logo" className="h-16 w-16 object-contain" />
         </div>
         <h3 className="text-2xl font-bold text-gray-800 dark:text-foreground-primary">{t('guide.hi')}</h3>
         <p className="text-sm text-gray-600 dark:text-foreground-tertiary">{t('guide.hiSub')}</p>
