@@ -39,4 +39,6 @@ class UserTemplate(db.Model):
 
     def __repr__(self):
         return f'<UserTemplate {self.id}: {self.name or "Unnamed"}>'
-
+    @classmethod
+    def get_all_style(cls):
+        return cls.query.all()

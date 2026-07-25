@@ -1,18 +1,16 @@
-from uuid import uuid4
-
-import utcnow
+import uuid
+from datetime import datetime
 from sqlalchemy import Column, String, ForeignKey, Integer, DateTime, Float, Text
 from sqlalchemy.orm import relationship
-
 from models import db
-
+import logging
 
 class MentorSession(db.Model):
     __tablename__ = 'mentor_session'
 
-    id = Column(String(36), primary_key=True, default=uuid4)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(String(36), nullable=True)
-    mentor_id = Column(String(36), ForeignKey('mentors.id'), nullable=False)
+    mentor_id = Column(String(36), ForeignKey('mentor.id'), nullable=False)
     contact_name = Column(String(100), nullable=False)
     contact_phone = Column(String(20), nullable=True)
     contact_email = Column(String(200), nullable=True)
@@ -23,7 +21,63 @@ class MentorSession(db.Model):
     status = Column(String(20), default='PENDING')  # PENDING / CONFIRMED / COMPLETED / CANCELLED
     payment_status = Column(String(20), default='UNPAID')  # UNPAID / PAID / REFUNDED
     notes = Column(Text, nullable=True)  # 用户备注
-    created_at = Column(DateTime, default=utcnow)
-    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     mentor = relationship('Mentor', backref='sessions')
+
+    @classmethod
+    def create_session(cls,data:dict):
+        try:
+            db.session.add(data)
+            db.session.commit()
+            return True
+        except Exception as e:
+            db.session.rollback()
+            logging.error(e)
+            return False
+    @classmethod
+    def get_sessions_by_id(cls,id):
+        try:
+            if not id:
+                return None
+            result=cls.query.filter_by(id=id).first()
+            if result:
+                return result
+            else:
+                return None
+        except Exception as e:
+            logging.error(e)
+            return None
+    @classmethod
+    def update_session_by_id(cls,data:dict):
+        try:
+            if not data:
+                return False
+            result = cls.query.filter_by(id=data['id']).first()
+            if result:
+                result.update(data)
+                db.session.commit()
+                return True
+            else:
+                return False
+        except Exception as e:
+            db.session.rollback()
+            logging.error(e)
+            return False
+    @classmethod
+    def delete_session_by_id(cls,id):
+        try:
+            if not id:
+                return False
+            result = cls.query.filter_by(id=id).first()
+            if result:
+                db.session.delete(result)
+                db.session.commit()
+                return True
+            else:
+                return False
+        except Exception as e:
+            db.session.rollback()
+            logging.error(e)
+            return False

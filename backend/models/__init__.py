@@ -24,6 +24,17 @@ from .page_image_version import PageImageVersion
 from .material import Material
 from .reference_file import ReferenceFile
 from .settings import Settings
+from .custom_order import CustomOrder
+from .mentor import Mentor
+from .mentor_slot import MentorSlot
+from .mentor_session import MentorSession
+from .diagnosis_task import DiagnosisTask
+from .invite_record import InviteRecord
+from .reward import Reward
 
-__all__ = ['db', 'Project', 'Page', 'Task', 'UserTemplate', 'PageImageVersion', 'Material', 'ReferenceFile', 'Settings']
+
+__all__ = ['db', 'Project', 'Page', 'Task',
+           'UserTemplate', 'PageImageVersion', 'Material', 'ReferenceFile',
+           'Settings','CustomOrder','Mentor','MentorSlot',
+           'MentorSession','DiagnosisTask','InviteRecord','Reward']
 

@@ -3,7 +3,6 @@ Export Controller - handles file export endpoints
 """
 import logging
 import os
-import io
 import shutil
 import time
 import zipfile
@@ -16,7 +15,6 @@ from utils import (
     parse_page_ids_from_query, parse_page_ids_from_body, get_filtered_pages
 )
 from services import ExportService, FileService
-from services.ai_service_manager import get_ai_service
 
 logger = logging.getLogger(__name__)
 

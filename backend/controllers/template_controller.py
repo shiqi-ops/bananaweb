@@ -2,6 +2,8 @@
 Template Controller - handles template-related endpoints
 """
 import logging
+from http.client import HTTPException
+
 from flask import Blueprint, request, current_app
 from models import db, Project, UserTemplate
 from utils import success_response, error_response, not_found, bad_request, allowed_file
@@ -12,8 +14,17 @@ logger = logging.getLogger(__name__)
 
 template_bp = Blueprint('templates', __name__, url_prefix='/api/projects')
 user_template_bp = Blueprint('user_templates', __name__, url_prefix='/api/user-templates')
+style_bp = Blueprint('styles', __name__, url_prefix='/api/styles')
 
-
+@style_bp.route('', methods=['GET'])
+def get_styles():
+    try:
+        styles=UserTemplate.get_all_style()
+        return success_response(styles)
+    except Exception as e:
+        db.session.rollback()
+        logger.error(e)
+        return error_response('something went wrong',str(e),404)
 @template_bp.route('/<project_id>/template', methods=['POST'])
 def upload_template(project_id):
     """
