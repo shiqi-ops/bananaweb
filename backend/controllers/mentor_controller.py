@@ -20,7 +20,7 @@ def get_all():
         logger.error(e)
         return error_response('有bug', str(e), 500)
 @mentor_bp.route("/<string:id>", methods=['GET'])
-def get_by_id(id):
+def get_by_id():
     try:
         mentor = Mentor.get_by_id(id)
         if mentor is None:
@@ -35,7 +35,7 @@ def get_by_id(id):
         logger.error(e)
         return error_response('查询逻辑有问题', str(e), 500)
 @mentor_bp.route("/<string:id>/slots", methods=['GET'])
-def get_by_slot_id(id):
+def get_by_slot_id():
     try:
         slot_time=request.args.get('date')
         slot_time=datetime.strptime(slot_time, "%Y-%m-%d %H:%M:%S")

@@ -26,6 +26,24 @@ class MentorSession(db.Model):
 
     mentor = relationship('Mentor', backref='sessions')
 
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'mentor_id': self.mentor_id,
+            'contact_name': self.contact_name,
+            'contact_phone': self.contact_phone,
+            'contact_email': self.contact_email,
+            'scheduled_start': self.scheduled_start,
+            'scheduled_end': self.scheduled_end,
+            'price': self.price,
+            'status': self.status,
+            'payment_status': self.payment_status,
+            'notes': self.notes,
+            'created_at': self.created_at,
+            'updated_at': self.updated_at,
+        }
+
     @classmethod
     def create_session(cls,data:dict):
         try:
@@ -81,3 +99,16 @@ class MentorSession(db.Model):
             db.session.rollback()
             logging.error(e)
             return False
+    @classmethod
+    def get_payment_status(cls,id):
+        try:
+            if not id:
+                return None
+            result = cls.query.filter_by(id=id).first()
+            if result:
+                return result.payment_status
+            else:
+                return None
+        except Exception as e:
+            logging.error(e)
+            return None

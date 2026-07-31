@@ -41,7 +41,7 @@ def create_order():
         logging.error(e)
         return jsonify({"code": 400, "message": str(e)})
 @order_bp.route("/<string:id>", methods=['GET'])
-def get_by_id(id):
+def get_by_id():
     try:
         data=CustomOrder.get_by_id(id)
         if not data:
@@ -71,7 +71,7 @@ def update_order():
             price=data.get('price'),
             reference_files=data.get('reference_files'),
         )
-        result=CustomOrder.update_order(new_order)
+        result=CustomOrder.update_by_id(data)
         if result:
             return jsonify({"code": 200, "message": "success"})
         else:
@@ -80,11 +80,11 @@ def update_order():
         logging.error(e)
         return jsonify({"code": 400, "message": str(e)})
 @order_bp.route("/<string:id>", methods=['DELETE'])
-def delete_order(id):
+def delete_order():
     try:
         if id is None:
             return jsonify({'code':200,'message':'id不可以为空'})
-        result = CustomOrder.delete_order(id)
+        result = CustomOrder.delete_by_id(id)
         if result:
             return jsonify({"code": 200, "message": "success"})
         else:
@@ -94,12 +94,34 @@ def delete_order(id):
         return jsonify({"code": 400, "message": str(e)})
 @order_bp.route("/prices", methods=['POST'])
 def compute_price():
-    pass
+    try:
+        data=request.get_json()
+        page_count=data.get('page_count',1)
+        base_price=page_count*50
+        if data.get('style_id'):
+            base_price=base_price*1.2
+        if data.get('mentor_id'):
+            pass
+        return jsonify({'code':200,'message':'success','data':base_price})
+    except Exception as e:
+        logging.error(e)
+        return jsonify({"code": 400, "message": str(e)})
 @order_bp.route("/<string:id>/pay", methods=['POST'])
-def pay_order(id):
-    pass
+def pay_order():
+    order=CustomOrder.get_by_id(id)
+    if not order:
+        return jsonify({'code':400,'message':'订单不存在'})
+    if order.payment_status=='PAID':
+        return jsonify({'code':200,'message':'已支付，无需重复支付'})
+    order.payment_status='PAID'
+    order.status = 'PAID'
+    result=CustomOrder.update_by_id(order.to_dict())
+    if result:
+        return jsonify({'code': 200, 'message': 'success'})
+    else:
+        return jsonify({'code':200,'message':'failed'})
 @order_bp.route("/<string:id>/pay_status", methods=['GET'])
-def pay_status(id):
+def pay_status():
     try:
         if id is None:
             return jsonify({'code':200,'message':'id不可以为空'})

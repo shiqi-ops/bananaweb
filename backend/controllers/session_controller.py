@@ -32,11 +32,11 @@ def create_session():
         logger.error(e)
         return jsonify({'code': 400, 'message': '错误，请重新尝试'})
 @session_bp.route('/<string:id>', methods=['GET'])
-def get_by_id(id):
+def get_by_id():
     try:
         if not id:
             return jsonify({'code':200,'message':'id不可以为空'})
-        result =MentorSession.get_by_id(id)
+        result =MentorSession.get_sessions_by_id(id)
         if result:
             return jsonify({'code':200,'message':'success'})
         else:
@@ -73,7 +73,7 @@ def update_session():
         logger.error(e)
         return jsonify({'code': 400, 'message': '查询失败，请重新尝试'})
 @session_bp.route('/<string:id>', methods=['DELETE'])
-def delete_session(id):
+def delete_session():
     try:
         if not id:
             return jsonify({'code': 200, 'message': 'id不可以为空'})
@@ -86,8 +86,29 @@ def delete_session(id):
         logger.error(e)
         return jsonify({'code':400,'message':'查询失败，请重新尝试'})
 @session_bp.route('/<string:id>/pay', methods=['POST'])
-def pay_session(id):
-    pass
+def pay_session():
+    session=MentorSession.get_session_by_id(id)
+    if not session:
+        return jsonify({'code':400,'message':'预约不存在'})
+    if session.payment_status == 'PAID':
+        return jsonify({"code": 200, "message": "已支付"})
+    session.payment_status = 'PAID'
+    session.status = 'CONFIRMED'
+    result=MentorSession.update_session_by_id(session.to_dict())
+    if result:
+        return jsonify({'code':200,'message':'success'})
+    else:
+        return jsonify({'code':200,'message':'failed'})
 @session_bp.route('/<string:id>/pay_status', methods=['GET'])
-def pay_status(id):
-    pass
+def pay_status():
+    try:
+        if not id:
+            return jsonify({'code':200,'message':'id不可以为空'})
+        result = MentorSession.get_payment_status(id)
+        if result:
+            return jsonify({'code':200,'message':'success','data':result})
+        else:
+            return jsonify({'code':200,'message':'failed'})
+    except Exception as e:
+        logger.error(e)
+        return jsonify({'code':400,'message':'网络错误，请重新尝试'})

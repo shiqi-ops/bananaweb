@@ -18,3 +18,18 @@ class Reward(db.Model):
     source_invite_id = Column(String(36), ForeignKey('invite_records.id'), nullable=True)
     is_claimed = Column(Boolean, default=False)  # 是否已领取
     created_at = Column(DateTime, default=utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'reward_type': self.reward_type,
+            'amount': self.amount,
+            'description': self.description,
+            'source_invite_id': self.source_invite_id,
+            'is_claimed': self.is_claimed,
+            'created_at': self.created_at,
+        }
+    @classmethod
+    def get_by_user_id(cls, user_id):
+        return cls.query.filter_by(user_id=user_id).all()

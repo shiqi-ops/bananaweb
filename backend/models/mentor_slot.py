@@ -19,6 +19,15 @@ class MentorSlot(db.Model):
     created_at = Column(DateTime, default=utcnow)
 
     mentor = relationship('Mentor', backref='slots')
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'mentor_id': self.mentor_id,
+            'start_time': self.start_time,
+            'end_time': self.end_time,
+            'is_booked': self.is_booked,
+            'created_at': self.created_at,
+        }
     @classmethod
     def get_slot_by_mentor_id(cls, id):
         return cls.query.get(mentor_id=id).first()
