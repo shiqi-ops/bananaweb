@@ -1,8 +1,6 @@
 import logging
 import uuid
-from uuid import uuid4
-
-import utcnow
+from datetime import datetime
 from sqlalchemy import String, Column, Text, Float, Boolean, Integer, DateTime
 
 from models import db
@@ -20,8 +18,8 @@ class Mentor(db.Model):
     price_per_hour  = Column(Float, nullable=False)              # 每小时价格
     is_active       = Column(Boolean, default=True)              # 是否上架
     sort_order      = Column(Integer, default=0)                 # 排序权重
-    created_at      = Column(DateTime, default=utcnow)
-    updated_at      = Column(DateTime, default=utcnow, onupdate=utcnow)
+    created_at      = Column(DateTime, default=datetime.utcnow)
+    updated_at      = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     def to_dict(self):
         return {
             'id': self.id,

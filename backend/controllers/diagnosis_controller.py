@@ -6,7 +6,7 @@ import uuid
 
 import fitz
 from PIL import Image, ImageDraw, ImageFont
-from flask import Blueprint, jsonify, request, send_file
+from flask import Blueprint, jsonify, request, send_file, current_app
 
 from models import db, DiagnosisTask, Project
 
@@ -192,11 +192,6 @@ def _build_optimization_prompt(result: dict) -> str:
 
     return '\n'.join(lines)
 
-
-# ---------------------------------------------------------------------------
-# 路由
-# ---------------------------------------------------------------------------
-
 @diagnosis_bp.route("", methods=['POST'])
 def create_diagnosis():
     """提交诊断任务"""
@@ -218,6 +213,10 @@ def create_diagnosis():
         )
         success = DiagnosisTask.create_task(new_task)
         if success:
+            from services.task_manager import task_manager
+            from services.diagnosis_service import run_diagnosis_task
+            app=current_app._get_current_object()
+            task_manager.submit_task(new_task.id,run_diagnosis_task,new_task.id,app)
             return jsonify({'code': 200, 'message': '创建成功', 'data': {'task_id': new_task.id}})
         else:
             return jsonify({'code': 500, 'message': '创建失败，数据库写入错误'})

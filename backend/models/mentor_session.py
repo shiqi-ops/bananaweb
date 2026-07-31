@@ -45,7 +45,7 @@ class MentorSession(db.Model):
         }
 
     @classmethod
-    def create_session(cls,data:dict):
+    def create_session(cls,data):
         try:
             db.session.add(data)
             db.session.commit()
@@ -68,13 +68,12 @@ class MentorSession(db.Model):
             logging.error(e)
             return None
     @classmethod
-    def update_session_by_id(cls,data:dict):
+    def update_session_by_id(cls,data):
         try:
             if not data:
                 return False
-            result = cls.query.filter_by(id=data['id']).first()
-            if result:
-                result.update(data)
+            result = cls.query.filter_by(id=data['id']).update(data)
+            if result!=0:
                 db.session.commit()
                 return True
             else:

@@ -2,7 +2,7 @@ from datetime import datetime
 
 from flask import Blueprint, request,jsonify
 import logging
-from models import CustomOrder
+from models import CustomOrder, db
 
 order_bp = Blueprint('order', __name__,url_prefix='/api/orders')
 logging=logging.getLogger(__name__)
@@ -34,14 +34,14 @@ def create_order():
         )
         result=CustomOrder.create_order(new_order)
         if result:
-            return jsonify({"code": 200, "message": "success"})
+            return jsonify({"code": 200, "message": "success",'data':new_order.id})
         else:
             return jsonify({"code":400,'message':'创建失败，请重新尝试'})
     except Exception as e:
         logging.error(e)
         return jsonify({"code": 400, "message": str(e)})
 @order_bp.route("/<string:id>", methods=['GET'])
-def get_by_id():
+def get_by_id(id):
     try:
         data=CustomOrder.get_by_id(id)
         if not data:
@@ -51,7 +51,7 @@ def get_by_id():
         logging.error(e)
         return jsonify({"code": 400, "message": str(e)})
 @order_bp.route("/<string:id>", methods=['PUT'])
-def update_order():
+def update_order(id):
     try:
         data=request.get_json()
         if not data or not data.get('id'):
@@ -80,7 +80,7 @@ def update_order():
         logging.error(e)
         return jsonify({"code": 400, "message": str(e)})
 @order_bp.route("/<string:id>", methods=['DELETE'])
-def delete_order():
+def delete_order(id):
     try:
         if id is None:
             return jsonify({'code':200,'message':'id不可以为空'})
@@ -100,14 +100,12 @@ def compute_price():
         base_price=page_count*50
         if data.get('style_id'):
             base_price=base_price*1.2
-        if data.get('mentor_id'):
-            pass
         return jsonify({'code':200,'message':'success','data':base_price})
     except Exception as e:
         logging.error(e)
         return jsonify({"code": 400, "message": str(e)})
 @order_bp.route("/<string:id>/pay", methods=['POST'])
-def pay_order():
+def pay_order(id):
     order=CustomOrder.get_by_id(id)
     if not order:
         return jsonify({'code':400,'message':'订单不存在'})
@@ -115,13 +113,10 @@ def pay_order():
         return jsonify({'code':200,'message':'已支付，无需重复支付'})
     order.payment_status='PAID'
     order.status = 'PAID'
-    result=CustomOrder.update_by_id(order.to_dict())
-    if result:
-        return jsonify({'code': 200, 'message': 'success'})
-    else:
-        return jsonify({'code':200,'message':'failed'})
+    db.session.commit()
+    return jsonify({'code': 200, 'message': 'success'})
 @order_bp.route("/<string:id>/pay_status", methods=['GET'])
-def pay_status():
+def pay_status(id):
     try:
         if id is None:
             return jsonify({'code':200,'message':'id不可以为空'})

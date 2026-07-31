@@ -2,7 +2,6 @@
 Template Controller - handles template-related endpoints
 """
 import logging
-from http.client import HTTPException
 
 from flask import Blueprint, request, current_app
 from models import db, Project, UserTemplate
@@ -14,12 +13,13 @@ logger = logging.getLogger(__name__)
 
 template_bp = Blueprint('templates', __name__, url_prefix='/api/projects')
 user_template_bp = Blueprint('user_templates', __name__, url_prefix='/api/user-templates')
-style_bp = Blueprint('styles', __name__, url_prefix='/api/styles')
+my_template_bp = Blueprint('styles', __name__, url_prefix='/api/styles')
 
-@style_bp.route('', methods=['GET'])
+@my_template_bp.route('', methods=['GET'])
 def get_styles():
     try:
         styles=UserTemplate.get_all_style()
+        styles=[style.to_dict() for style in styles]
         return success_response(styles)
     except Exception as e:
         db.session.rollback()

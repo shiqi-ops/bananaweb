@@ -48,7 +48,7 @@ class CustomOrder(db.Model):
         }
 
     @classmethod
-    def create_order(cls,data:dict):
+    def create_order(cls,data):
         try:
             db.session.add(data)
             db.session.commit()
@@ -68,7 +68,7 @@ class CustomOrder(db.Model):
             logging.error(e)
             return None
     @classmethod
-    def update_by_id(cls,data:dict):
+    def update_by_id(cls,data):
         try:
             order=cls.query.filter_by(id=data['id']).first()
             if order.status != 'PENDING':

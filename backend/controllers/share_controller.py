@@ -1,37 +1,43 @@
 import base64
 import io
+import logging
 import os
 import uuid
+import qrcode
 from flask import Blueprint, request,jsonify
 from models import InviteRecord, db, Reward
 from PIL import Image, ImageDraw, ImageFont
 share_bp = Blueprint('share_bp', __name__,url_prefix='/api/share')
-
+logger=logging.getLogger(__name__)
 @share_bp.route('/invite-link',methods=['GET'])
 def invite_link():
-    user_id=request.args.get('user_id')
-    if not user_id:
-        return jsonify({'code':400,'message':'user_id不可以为空'})
-    existing = InviteRecord.query.filter_by(inviter_user_id=user_id).first()
-    if existing:
-        invite_code = existing.invite_code
-    else:
-        invite_code = uuid.uuid4().hex[:8]
-        record = InviteRecord(
-            inviter_user_id=user_id,
-            invite_code=invite_code,
-            status='PENDING'
-        )
-        db.session.add(record)
-        db.session.commit()
-    frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:3000')
-    invite_link = f"{frontend_url}/register?invite_code={invite_code}"
-    return jsonify({'code': 200, 'message': 'success', 'data': {
-        'invite_code': invite_code,
-        'invite_link': invite_link
-    }})
+    try:
+        user_id = request.args.get('user_id')
+        if not user_id:
+            return jsonify({'code': 400, 'message': 'user_id不可以为空'})
+        existing = InviteRecord.query.filter_by(inviter_user_id=user_id).first()
+        if existing:
+            invite_code = existing.invite_code
+        else:
+            invite_code = uuid.uuid4().hex[:8]
+            record = InviteRecord(
+                inviter_user_id=user_id,
+                invite_code=invite_code,
+                status='PENDING'
+            )
+            db.session.add(record)
+            db.session.commit()
+        frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:3000')
+        invite_link = f"{frontend_url}/register?invite_code={invite_code}"
+        return jsonify({'code': 200, 'message': 'success', 'data': {
+            'invite_code': invite_code,
+            'invite_link': invite_link
+        }})
+    except Exception as e:
+        logger.error(e)
+        return jsonify({'code':400,'message':f'{e}'})
 @share_bp.route('/qrcode',methods=['GET'])
-def qrcode():
+def generate_qrcode():
     user_id=request.args.get('user_id')
     if not user_id:
         return jsonify({'code': 400, 'message': 'user_id不能为空'})

@@ -45,7 +45,7 @@ class DiagnosisTask(db.Model):
             logging.error(e)
             return None
     @classmethod
-    def create_task(cls,data:dict):
+    def create_task(cls,data):
         try:
             db.session.add(data)
             db.session.commit()

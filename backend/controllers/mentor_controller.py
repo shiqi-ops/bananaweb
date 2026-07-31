@@ -20,7 +20,7 @@ def get_all():
         logger.error(e)
         return error_response('有bug', str(e), 500)
 @mentor_bp.route("/<string:id>", methods=['GET'])
-def get_by_id():
+def get_by_id(id):
     try:
         mentor = Mentor.get_by_id(id)
         if mentor is None:
@@ -35,15 +35,18 @@ def get_by_id():
         logger.error(e)
         return error_response('查询逻辑有问题', str(e), 500)
 @mentor_bp.route("/<string:id>/slots", methods=['GET'])
-def get_by_slot_id():
+def get_by_slot_id(id):
     try:
         slot_time=request.args.get('date')
         slot_time=datetime.strptime(slot_time, "%Y-%m-%d %H:%M:%S")
-        mentor_slot = MentorSlot.get_by_slot_id(id)
+        mentor_slot = MentorSlot.get_slot_by_mentor_id(id)
         if mentor_slot is None:
             return jsonify({"code": 200, "message": "mentor slot not found"})
-        if slot_time>mentor_slot.end_time or slot_time<mentor_slot.start_time or mentor_slot.is_booked is True:
-            return jsonify({"code":200, "message": "mentor slot is not booked"})
+        if all(
+                slot_time > slot.end_time or slot_time < slot.start_time or slot.is_booked is True
+                for slot in mentor_slot
+        ):
+            return jsonify({"code": 200, "message": "mentor slot is not available"})
         return jsonify({'code': 200, 'message':'可以预约'})
     except Exception as e:
         logger.error(e)

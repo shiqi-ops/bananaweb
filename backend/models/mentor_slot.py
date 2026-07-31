@@ -30,4 +30,4 @@ class MentorSlot(db.Model):
         }
     @classmethod
     def get_slot_by_mentor_id(cls, id):
-        return cls.query.get(mentor_id=id).first()
+        return cls.query.filter_by(mentor_id=id).all()
