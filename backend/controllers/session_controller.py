@@ -75,7 +75,7 @@ def update_session(id):
             payment_status=data.get('payment_status'),
             mentor_id=data.get('mentor_id'),
         )
-        result=MentorSession.update_session_by_id(new_session)
+        result=MentorSession.update_session_by_id(new_session.to_dict())
         if result:
             return jsonify({'code':200,'message':'success'})
         else:

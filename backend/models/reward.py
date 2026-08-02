@@ -1,7 +1,6 @@
 import uuid
-from uuid import uuid4
+from datetime import datetime
 
-import utcnow
 from sqlalchemy import String, Column, Float, ForeignKey, Boolean, DateTime
 
 from models import db
@@ -17,7 +16,7 @@ class Reward(db.Model):
     description = Column(String(500), nullable=True)  # 奖励描述
     source_invite_id = Column(String(36), ForeignKey('invite_records.id'), nullable=True)
     is_claimed = Column(Boolean, default=False)  # 是否已领取
-    created_at = Column(DateTime, default=utcnow)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
     def to_dict(self):
         return {

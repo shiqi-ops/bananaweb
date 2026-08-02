@@ -216,7 +216,7 @@ def create_diagnosis():
             from services.task_manager import task_manager
             from services.diagnosis_service import run_diagnosis_task
             app=current_app._get_current_object()
-            task_manager.submit_task(new_task.id,run_diagnosis_task,new_task.id,app)
+            task_manager.submit_task(new_task.id, run_diagnosis_task, app)
             return jsonify({'code': 200, 'message': '创建成功', 'data': {'task_id': new_task.id}})
         else:
             return jsonify({'code': 500, 'message': '创建失败，数据库写入错误'})
@@ -350,7 +350,6 @@ def apply(id):
         # 4. 创建新 Project
         new_project = Project(
             id=str(uuid.uuid4()),
-            user_id=task.user_id,
             idea_prompt=optimization_prompt,
             creation_type='ppt_renovation',
             status='DRAFT',
@@ -359,8 +358,27 @@ def apply(id):
         db.session.commit()
         logger.info(f"[apply] 为诊断 {id} 创建优化项目 {new_project.id}")
 
-        # 5. 关联原文件为参考文件
-        renovation_task_id = None
+        # 5. 复制源文件到项目 template 目录（翻新任务需要）
+        import shutil
+        source_path = task.file_path
+        template_dir = os.path.join(current_app.config['UPLOAD_FOLDER'], new_project.id, 'template')
+        os.makedirs(template_dir, exist_ok=True)
+
+        # 如果是 pptx，优先使用同名 PDF；否则直接复制原文件
+        target_filename = os.path.basename(source_path)
+        if task.file_type == 'pptx':
+            pdf_candidate = os.path.splitext(source_path)[0] + '.pdf'
+            if os.path.exists(pdf_candidate):
+                source_path = pdf_candidate
+                target_filename = os.path.basename(pdf_candidate)
+                logger.info(f"[apply] PPTX → 使用同名 PDF: {source_path}")
+
+        dest_path = os.path.join(template_dir, target_filename)
+        if os.path.exists(source_path) and not os.path.exists(dest_path):
+            shutil.copy2(source_path, dest_path)
+            logger.info(f"[apply] 源文件已复制: {dest_path}")
+
+        # 6. 创建 ReferenceFile 记录
         if os.path.exists(task.file_path):
             try:
                 from models import ReferenceFile
@@ -368,6 +386,7 @@ def apply(id):
                     project_id=new_project.id,
                     filename=os.path.basename(task.file_path),
                     file_path=task.file_path,
+                    file_size=os.path.getsize(task.file_path),
                     file_type=task.file_type,
                     parse_status='pending',
                 )
@@ -376,48 +395,67 @@ def apply(id):
             except Exception as e:
                 logger.warning(f"[apply] 关联参考文件失败（非致命）: {e}")
 
-        # 6. 提交翻新任务
-        try:
-            from flask import current_app
-            from services.task_manager import task_manager, process_ppt_renovation_task
-            from services.ai_service_manager import get_ai_service
-            from services.file_service import FileService
-            from services.file_parser_service import FileParserService
-            from models import Task as TaskModel
-
-            app_obj = current_app._get_current_object() if current_app else None
-
-            # 创建 Task 记录
-            ren_task = TaskModel(
-                id=str(uuid.uuid4()),
-                project_id=new_project.id,
-                task_type='PPT_RENOVATION',
-                status='PENDING',
-            )
-            ren_task.set_progress({'current': 0, 'total': 0, 'percentage': 0})
-            db.session.add(ren_task)
+        # 7. 创建 Page 记录（翻新任务需要页面已存在）
+        from services.diagnosis_service import _count_pages
+        total_pages = _count_pages(dest_path, task.file_type)
+        if total_pages > 0:
+            from models import Page as PageModel
+            for i in range(total_pages):
+                page = PageModel(
+                    project_id=new_project.id,
+                    order_index=i,
+                    status='DRAFT',
+                )
+                page.set_outline_content({'title': f'第{i+1}页', 'points': []})
+                db.session.add(page)
             db.session.commit()
-            renovation_task_id = ren_task.id
+            logger.info(f"[apply] 创建了 {total_pages} 个页面")
 
-            ai_service = get_ai_service()
-            file_service = FileService()
-            file_parser = FileParserService()
+        # 8. 提交翻新任务
+        renovation_task_id = None
+        if total_pages > 0:
+            try:
+                from services.task_manager import task_manager, process_ppt_renovation_task
+                from services.ai_service_manager import get_ai_service
+                from services.file_service import FileService
+                from services.file_parser_service import FileParserService
+                from models import Task as TaskModel
 
-            task_manager.submit_task(
-                ren_task.id,
-                process_ppt_renovation_task,
-                new_project.id,
-                ai_service,
-                file_service,
-                file_parser,
-                False,   # keep_layout
-                5,       # max_workers
-                app_obj,
-                'zh',
-            )
-            logger.info(f"[apply] 翻新任务 {ren_task.id} → 项目 {new_project.id}")
-        except Exception as e:
-            logger.warning(f"[apply] 提交翻新任务失败（项目已创建，可手动触发生成）: {e}")
+                app_obj = current_app._get_current_object() if current_app else None
+
+                # 创建 Task 记录
+                ren_task = TaskModel(
+                    id=str(uuid.uuid4()),
+                    project_id=new_project.id,
+                    task_type='PPT_RENOVATION',
+                    status='PENDING',
+                )
+                ren_task.set_progress({'current': 0, 'total': 0, 'percentage': 0})
+                db.session.add(ren_task)
+                db.session.commit()
+                renovation_task_id = ren_task.id
+
+                ai_service = get_ai_service()
+                file_service = FileService(current_app.config['UPLOAD_FOLDER'])
+                file_parser = FileParserService()
+
+                task_manager.submit_task(
+                    ren_task.id,
+                    process_ppt_renovation_task,
+                    new_project.id,
+                    ai_service,
+                    file_service,
+                    file_parser,
+                    False,   # keep_layout
+                    5,       # max_workers
+                    app_obj,
+                    'zh',
+                )
+                logger.info(f"[apply] 翻新任务 {ren_task.id} → 项目 {new_project.id}")
+            except Exception as e:
+                logger.warning(f"[apply] 提交翻新任务失败（项目已创建，可手动触发生成）: {e}")
+        else:
+            logger.warning(f"[apply] 无法读取源文件页数，跳过翻新任务。项目已创建，可手动上传参考文件。")
 
         return jsonify({
             'code': 200,

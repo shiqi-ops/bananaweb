@@ -229,7 +229,7 @@ def _generate_summary(ai_service, all_page_results: list) -> dict:
     """汇总所有页诊断结果，调AI生成评分和摘要"""
     try:
         prompt = _diagnosis_summary_prompt(all_page_results)
-        response_text = ai_service.generate_text(prompt)
+        response_text = ai_service.text_provider.generate_text(prompt)
         result = _parse_json(response_text)
         return result
     except Exception as e:

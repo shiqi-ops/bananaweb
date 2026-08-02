@@ -70,13 +70,14 @@ def poster():
     if not user_id:
         return jsonify({'code': 400, 'message': 'user_id不能为空'})
     invite_link=_get_or_create_invite_link(user_id)
-    qr_img = qrcode.make(invite_link).resize((300,300))
+    qr_img = qrcode.make(invite_link).convert('RGB').resize((300,300))
 
     bg = Image.new('RGB', (750, 1334), color=(255, 255, 255))
     bg.paste(qr_img,(275,900))
 
     buf = io.BytesIO()
     bg.save(buf,format='png')
+    buf.seek(0)
     return jsonify({'code': 200, 'message': 'success', 'data': {
         'poster_base64': base64.b64encode(buf.read()).decode('utf-8')
     }})
@@ -99,7 +100,7 @@ def rewards():
     result = [r.to_dict() for r in rewards]
     return jsonify({'code': 200, 'message': 'success', 'data': result})
 @share_bp.route('rewards/<string:id>/claim',methods=['POST'])
-def claim():
+def claim(id):
     data = request.get_json()
     user_id = data.get('user_id')
 
