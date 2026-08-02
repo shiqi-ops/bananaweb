@@ -350,6 +350,7 @@ def apply(id):
         # 4. 创建新 Project
         new_project = Project(
             id=str(uuid.uuid4()),
+            user_id=task.user_id,
             idea_prompt=optimization_prompt,
             creation_type='ppt_renovation',
             status='DRAFT',
@@ -379,6 +380,7 @@ def apply(id):
             logger.info(f"[apply] 源文件已复制: {dest_path}")
 
         # 6. 创建 ReferenceFile 记录
+        renovation_task_id = None
         if os.path.exists(task.file_path):
             try:
                 from models import ReferenceFile
@@ -412,7 +414,6 @@ def apply(id):
             logger.info(f"[apply] 创建了 {total_pages} 个页面")
 
         # 8. 提交翻新任务
-        renovation_task_id = None
         if total_pages > 0:
             try:
                 from services.task_manager import task_manager, process_ppt_renovation_task

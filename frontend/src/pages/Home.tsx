@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Sparkles, FileText, FileEdit, ImagePlus, Paperclip, Palette, Lightbulb, Search, Settings, FolderOpen, HelpCircle, Sun, Moon, Globe, Monitor, ChevronDown, Upload, RefreshCw } from 'lucide-react';
+import { Sparkles, FileText, FileEdit, ImagePlus, Paperclip, Palette, Lightbulb, Search, Settings, FolderOpen, HelpCircle, Sun, Moon, Globe, Monitor, ChevronDown, Upload, RefreshCw, Stethoscope, Share2 } from 'lucide-react';
 import { Button, Card, useToast, MaterialGeneratorModal, MaterialCenterModal, ReferenceFileList, ReferenceFileSelector, FilePreviewModal, HelpModal, Footer, GithubRepoCard, TextStyleSelector } from '@/components/shared';
 import { MarkdownTextarea, type MarkdownTextareaRef } from '@/components/shared/MarkdownTextarea';
 import { TemplateSelector, getTemplateFile } from '@/components/shared/TemplateSelector';
@@ -823,16 +823,34 @@ export const Home: React.FC = () => {
             {t('home.subtitle')}
           </p>
 
-          {/* 私人定制选项 */}
-          <div className="mt-6 md:mt-8">
+          {/* 快捷导航按钮 */}
+          <div className="flex flex-wrap items-center justify-center gap-3 mt-6 md:mt-8">
+            <Button
+              variant="primary"
+              size="md"
+              icon={<Stethoscope size={18} />}
+              onClick={() => navigate('/diagnosis')}
+              className="bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+            >
+              PPT 诊断
+            </Button>
             <Button
               variant="primary"
               size="md"
               icon={<Palette size={18} />}
-              onClick={() => setIsCustomizationModalOpen(true)}
+              onClick={() => navigate('/custom')}
               className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
             >
               私人定制服务
+            </Button>
+            <Button
+              variant="primary"
+              size="md"
+              icon={<Share2 size={18} />}
+              onClick={() => navigate('/share')}
+              className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+            >
+              宣传分享
             </Button>
           </div>
 
@@ -844,6 +862,7 @@ export const Home: React.FC = () => {
               { icon: <Search size={14} className="text-orange-500 dark:text-orange-400" />, label: t('home.features.regionEdit') },
 
               { icon: <Paperclip size={14} className="text-green-600 dark:text-green-400" />, label: t('home.features.export') },
+              { icon: <Share2 size={14} className="text-blue-500 dark:text-blue-400" />, label: '宣传分享' },
             ].map((feature, idx) => (
               <span
                 key={idx}
