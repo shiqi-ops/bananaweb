@@ -20,6 +20,11 @@ from models import db, DiagnosisTask
 logger = logging.getLogger(__name__)
 
 
+class DiagnosisFatalError(Exception):
+    """无法恢复的诊断错误——应立即终止任务而非逐页重试"""
+    pass
+
+
 # ---------------------------------------------------------------------------
 # Prompt 模板
 # ---------------------------------------------------------------------------
@@ -242,6 +247,16 @@ def _diagnose_single_page(ai_service, img, page_num: int,
         result["page_number"] = page_num
         return result
     except Exception as e:
+        # 认证/权限类错误不应重试每一页，直接终止任务
+        err_msg = str(e).lower()
+        fatal_keywords = [
+            'api key not valid', 'api_key_invalid', 'permission denied',
+            '403', '401', 'unauthorized', 'forbidden', 'authentication',
+            'invalid argument', 'invalid_request',
+        ]
+        if any(kw in err_msg for kw in fatal_keywords):
+            raise DiagnosisFatalError(str(e)) from e
+
         logger.error(f"AI诊断第{page_num}页失败: {e}")
         return {
             "page_number": page_num,
@@ -377,6 +392,13 @@ def run_diagnosis_task(task_id: str, app):
 
             logger.info(f"诊断{task_id}完成: 评分{summary.get('score')}/100")
 
+        except DiagnosisFatalError as e:
+            logger.error(f"诊断{task_id}: 遇到致命错误，立即终止 — {e}")
+            if diagnosis:
+                diagnosis.status = "FAILED"
+                diagnosis.error_message = f"AI服务认证失败，请检查API密钥配置: {e}"
+                diagnosis.completed_at = datetime.utcnow()
+                db.session.commit()
         except Exception as e:
             logger.error(f"诊断{task_id}失败: {traceback.format_exc()}")
             try:

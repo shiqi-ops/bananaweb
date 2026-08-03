@@ -159,7 +159,12 @@ export const CustomOrderPage: React.FC = () => {
           style_id: selectedStyle,
           mentor_id: selectedMentor,
         });
+<<<<<<< HEAD
         setPrice(response.data?.data != null ? Math.round(response.data.data * 100) / 100 : null);
+=======
+        const totalPrice = response.data?.data?.total_price;
+        setPrice(totalPrice != null ? Math.round(totalPrice * 100) / 100 : null);
+>>>>>>> 741b30ea31b74212ca1a239915b104285bb1c469
       } catch (error: any) {
         console.error('价格计算失败:', error);
         setPrice(null);
@@ -199,6 +204,7 @@ export const CustomOrderPage: React.FC = () => {
 
     setSubmitting(true);
     try {
+<<<<<<< HEAD
       const payload: Record<string, any> = {
         user_id: 'user-001',
         contact_name: name.trim(),
@@ -217,6 +223,27 @@ export const CustomOrderPage: React.FC = () => {
 
       const response = await apiClient.post<{ data?: OrderResponse }>('/api/orders', payload);
       const orderIdValue = response.data?.data;
+=======
+      const formData = new FormData();
+      formData.append('user_id', 'user-001');
+      formData.append('name', name.trim());
+      if (phone.trim()) formData.append('phone', phone.trim());
+      if (email.trim()) formData.append('email', email.trim());
+      formData.append('description', description.trim());
+      formData.append('page_count', String(pageCount));
+      if (useScenario.trim()) formData.append('use_scenario', useScenario.trim());
+      if (selectedStyle) formData.append('style_id', selectedStyle);
+      if (selectedMentor) formData.append('mentor_id', selectedMentor);
+      if (deliveryTime) formData.append('delivery_time', deliveryTime);
+
+      // 添加参考素材文件
+      referenceFiles.forEach((file) => {
+        formData.append('reference_files', file);
+      });
+
+      const response = await apiClient.post<{ data?: OrderResponse }>('/api/orders', formData);
+      const orderIdValue = response.data?.data?.order_id;
+>>>>>>> 741b30ea31b74212ca1a239915b104285bb1c469
       if (orderIdValue) {
         setOrderId(orderIdValue);
         setShowPaymentModal(true);

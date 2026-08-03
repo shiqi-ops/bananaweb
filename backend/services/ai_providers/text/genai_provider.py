@@ -9,12 +9,23 @@ import logging
 from typing import Generator
 from google import genai
 from google.genai import types
-from tenacity import retry, stop_after_attempt, wait_exponential
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception
 from .base import TextProvider, strip_think_tags
 from config import get_config
 from ..genai_client import make_genai_client
 
 logger = logging.getLogger(__name__)
+
+_FATAL_ERROR_KEYWORDS = [
+    'api key not valid', 'api_key_invalid', 'permission denied',
+    '403', '401', 'unauthorized', 'forbidden', 'authentication',
+]
+
+
+def _is_retriable_error(exception):
+    """认证/权限类错误重试无意义，直接跳过重试"""
+    err_msg = str(exception).lower()
+    return not any(kw in err_msg for kw in _FATAL_ERROR_KEYWORDS)
 
 
 def _log_retry(retry_state):
@@ -62,6 +73,7 @@ class GenAITextProvider(TextProvider):
     @retry(
         stop=stop_after_attempt(get_config().GENAI_MAX_RETRIES + 1),
         wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception(_is_retriable_error),
         reraise=True,
         before_sleep=_log_retry
     )
@@ -91,6 +103,7 @@ class GenAITextProvider(TextProvider):
     @retry(
         stop=stop_after_attempt(get_config().GENAI_MAX_RETRIES + 1),
         wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception(_is_retriable_error),
         reraise=True,
         before_sleep=_log_retry
     )

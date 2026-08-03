@@ -21,12 +21,15 @@ class Reward(db.Model):
     def to_dict(self):
         return {
             'id': self.id,
+            'name': self.description or self.reward_type,
             'user_id': self.user_id,
             'reward_type': self.reward_type,
+            'reward_value': str(self.amount) if self.amount is not None else '',
             'amount': self.amount,
             'description': self.description,
             'source_invite_id': self.source_invite_id,
             'is_claimed': self.is_claimed,
+            'claimed_at': (self.created_at.isoformat() if self.is_claimed and self.created_at else None),
             'created_at': self.created_at,
         }
     @classmethod

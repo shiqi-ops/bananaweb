@@ -13,6 +13,7 @@ class InviteRecord(db.Model):
     inviter_user_id = Column(String(36), nullable=False)          # 邀请人
     invitee_user_id = Column(String(36), nullable=True)           # 被邀请人（注册后回填）
     invite_code     = Column(String(20), unique=True, nullable=False)  # 邀请码
+    name            = Column(String(100), nullable=True)          # 被邀请人名称
     status          = Column(String(20), default='PENDING')       # PENDING / REGISTERED / REWARDED
     reward_granted  = Column(Boolean, default=False)              # 奖励是否已发放
     created_at      = Column(DateTime, default=datetime.utcnow)
@@ -20,10 +21,12 @@ class InviteRecord(db.Model):
     def to_dict(self):
         return {
             'id': self.id,
+            'name': self.name or self.invite_code or '未知用户',
             'inviter_user_id': self.inviter_user_id,
             'invitee_user_id': self.invitee_user_id,
             'invite_code': self.invite_code,
             'status': self.status,
+            'invited_at': (self.created_at.isoformat() if self.created_at else None),
             'reward_granted': self.reward_granted,
             'created_at': self.created_at,
             'registered_at': self.registered_at

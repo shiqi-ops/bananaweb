@@ -6,10 +6,13 @@ import uuid
 
 import fitz
 from PIL import Image, ImageDraw, ImageFont
+from werkzeug.utils import secure_filename
 from flask import Blueprint, jsonify, request, send_file, current_app
 from werkzeug.utils import secure_filename
 
 from models import db, DiagnosisTask, Project
+
+UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), '..', '..', 'uploads', 'diagnosis')
 
 diagnosis_bp = Blueprint('diagnosis_bp', __name__, url_prefix='/api/diagnosis')
 logger = logging.getLogger(__name__)
@@ -193,6 +196,7 @@ def _build_optimization_prompt(result: dict) -> str:
 
     return '\n'.join(lines)
 
+<<<<<<< HEAD
 @diagnosis_bp.route('/upload', methods=['POST'])
 def diagnosis_upload():
     try:
@@ -233,6 +237,42 @@ def diagnosis_upload():
     except Exception as e:
         logger.error(f"上传诊断文件失败: {e}")
         return jsonify({'code': 500, 'message': str(e)})
+=======
+@diagnosis_bp.route("/upload", methods=['POST'])
+def upload_file():
+    """上传待诊断的 PPT/PDF 文件"""
+    try:
+        if 'file' not in request.files:
+            return jsonify({'code': 400, 'message': '缺少文件'})
+        file = request.files['file']
+        if not file.filename:
+            return jsonify({'code': 400, 'message': '文件名为空'})
+
+        original_name = file.filename
+        safe_name = secure_filename(original_name) or 'diagnosis_file'
+        # 用原始文件名判断类型（secure_filename 可能吞掉扩展名）
+        original_lower = original_name.lower()
+        file_type = 'pdf' if original_lower.endswith('.pdf') else 'pptx'
+        # 如果 safe_name 丢了扩展名，补上
+        if '.' not in safe_name:
+            ext = 'pdf' if file_type == 'pdf' else 'pptx'
+            safe_name = f"{safe_name}.{ext}"
+
+        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+        file_path = os.path.join(UPLOAD_FOLDER, f"{uuid.uuid4()}_{safe_name}")
+        file.save(file_path)
+
+        return jsonify({
+            'code': 200,
+            'message': '上传成功',
+            'data': {'file_path': file_path, 'file_type': file_type}
+        })
+    except Exception as e:
+        logger.error(f"上传文件失败: {e}")
+        return jsonify({'code': 500, 'message': f'上传失败: {str(e)}'})
+
+
+>>>>>>> 741b30ea31b74212ca1a239915b104285bb1c469
 @diagnosis_bp.route("", methods=['POST'])
 def create_diagnosis():
     """提交诊断任务"""
@@ -391,6 +431,7 @@ def apply(id):
         # 4. 创建新 Project
         new_project = Project(
             id=str(uuid.uuid4()),
+            user_id=task.user_id,
             idea_prompt=optimization_prompt,
             creation_type='ppt_renovation',
             status='DRAFT',
@@ -421,7 +462,12 @@ def apply(id):
             shutil.copy2(source_path, dest_path)
             logger.info(f"[apply] 源文件已复制: {dest_path}")
 
+<<<<<<< HEAD
         # 6. 创建 ReferenceFile 记录（已解析完成，不需要再解析）
+=======
+        # 6. 创建 ReferenceFile 记录
+        renovation_task_id = None
+>>>>>>> 741b30ea31b74212ca1a239915b104285bb1c469
         if os.path.exists(task.file_path):
             try:
                 from models import ReferenceFile
@@ -454,8 +500,12 @@ def apply(id):
             db.session.commit()
             logger.info(f"[apply] 创建了 {total_pages} 个页面")
 
+<<<<<<< HEAD
         # 8. 提交诊断优化任务（基于诊断结果直接生成优化内容，跳过 MinerU 重解析）
         renovation_task_id = None
+=======
+        # 8. 提交翻新任务
+>>>>>>> 741b30ea31b74212ca1a239915b104285bb1c469
         if total_pages > 0:
             try:
                 from services.task_manager import task_manager, process_diagnosis_optimization_task
