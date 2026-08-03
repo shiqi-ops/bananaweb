@@ -6,9 +6,12 @@ import uuid
 
 import fitz
 from PIL import Image, ImageDraw, ImageFont
+from werkzeug.utils import secure_filename
 from flask import Blueprint, jsonify, request, send_file, current_app
 
 from models import db, DiagnosisTask, Project
+
+UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), '..', '..', 'uploads', 'diagnosis')
 
 diagnosis_bp = Blueprint('diagnosis_bp', __name__, url_prefix='/api/diagnosis')
 logger = logging.getLogger(__name__)
@@ -191,6 +194,40 @@ def _build_optimization_prompt(result: dict) -> str:
         lines.append("")
 
     return '\n'.join(lines)
+
+@diagnosis_bp.route("/upload", methods=['POST'])
+def upload_file():
+    """上传待诊断的 PPT/PDF 文件"""
+    try:
+        if 'file' not in request.files:
+            return jsonify({'code': 400, 'message': '缺少文件'})
+        file = request.files['file']
+        if not file.filename:
+            return jsonify({'code': 400, 'message': '文件名为空'})
+
+        original_name = file.filename
+        safe_name = secure_filename(original_name) or 'diagnosis_file'
+        # 用原始文件名判断类型（secure_filename 可能吞掉扩展名）
+        original_lower = original_name.lower()
+        file_type = 'pdf' if original_lower.endswith('.pdf') else 'pptx'
+        # 如果 safe_name 丢了扩展名，补上
+        if '.' not in safe_name:
+            ext = 'pdf' if file_type == 'pdf' else 'pptx'
+            safe_name = f"{safe_name}.{ext}"
+
+        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+        file_path = os.path.join(UPLOAD_FOLDER, f"{uuid.uuid4()}_{safe_name}")
+        file.save(file_path)
+
+        return jsonify({
+            'code': 200,
+            'message': '上传成功',
+            'data': {'file_path': file_path, 'file_type': file_type}
+        })
+    except Exception as e:
+        logger.error(f"上传文件失败: {e}")
+        return jsonify({'code': 500, 'message': f'上传失败: {str(e)}'})
+
 
 @diagnosis_bp.route("", methods=['POST'])
 def create_diagnosis():

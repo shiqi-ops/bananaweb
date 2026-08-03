@@ -14,6 +14,7 @@ class UserTemplate(db.Model):
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     name = db.Column(db.String(200), nullable=True)  # Optional template name
+    description = db.Column(db.Text, nullable=True)   # 风格描述
     file_path = db.Column(db.String(500), nullable=False)
     thumb_path = db.Column(db.String(500), nullable=True)  # Thumbnail path for faster loading
     file_size = db.Column(db.Integer, nullable=True)  # File size in bytes
@@ -29,8 +30,11 @@ class UserTemplate(db.Model):
             thumb_url = None
 
         return {
+            'id': self.id,
             'template_id': self.id,
             'name': self.name,
+            'description': self.description or self.name,
+            'preview_url': thumb_url,
             'template_image_url': f'/files/user-templates/{self.id}/{self.file_path.split("/")[-1]}',
             'thumb_url': thumb_url,
             'created_at': self.created_at.isoformat() if self.created_at else None,
