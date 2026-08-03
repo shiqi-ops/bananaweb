@@ -196,7 +196,6 @@ def _build_optimization_prompt(result: dict) -> str:
 
     return '\n'.join(lines)
 
-<<<<<<< HEAD
 @diagnosis_bp.route('/upload', methods=['POST'])
 def diagnosis_upload():
     try:
@@ -237,7 +236,6 @@ def diagnosis_upload():
     except Exception as e:
         logger.error(f"上传诊断文件失败: {e}")
         return jsonify({'code': 500, 'message': str(e)})
-=======
 @diagnosis_bp.route("/upload", methods=['POST'])
 def upload_file():
     """上传待诊断的 PPT/PDF 文件"""
@@ -272,7 +270,6 @@ def upload_file():
         return jsonify({'code': 500, 'message': f'上传失败: {str(e)}'})
 
 
->>>>>>> 741b30ea31b74212ca1a239915b104285bb1c469
 @diagnosis_bp.route("", methods=['POST'])
 def create_diagnosis():
     """提交诊断任务"""
@@ -462,12 +459,6 @@ def apply(id):
             shutil.copy2(source_path, dest_path)
             logger.info(f"[apply] 源文件已复制: {dest_path}")
 
-<<<<<<< HEAD
-        # 6. 创建 ReferenceFile 记录（已解析完成，不需要再解析）
-=======
-        # 6. 创建 ReferenceFile 记录
-        renovation_task_id = None
->>>>>>> 741b30ea31b74212ca1a239915b104285bb1c469
         if os.path.exists(task.file_path):
             try:
                 from models import ReferenceFile
@@ -500,12 +491,6 @@ def apply(id):
             db.session.commit()
             logger.info(f"[apply] 创建了 {total_pages} 个页面")
 
-<<<<<<< HEAD
-        # 8. 提交诊断优化任务（基于诊断结果直接生成优化内容，跳过 MinerU 重解析）
-        renovation_task_id = None
-=======
-        # 8. 提交翻新任务
->>>>>>> 741b30ea31b74212ca1a239915b104285bb1c469
         if total_pages > 0:
             try:
                 from services.task_manager import task_manager, process_diagnosis_optimization_task
