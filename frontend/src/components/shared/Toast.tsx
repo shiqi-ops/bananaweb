@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { X, CheckCircle, AlertCircle, AlertTriangle, Info } from 'lucide-react';
 import { cn } from '@/utils';
 
@@ -60,33 +60,31 @@ export const Toast: React.FC<ToastProps> = ({
 export const useToast = () => {
   const [toasts, setToasts] = React.useState<Array<{ id: string; props: Omit<ToastProps, 'onClose'> }>>([]);
 
-  const show = (props: Omit<ToastProps, 'onClose'>) => {
+  const show = useCallback((props: Omit<ToastProps, 'onClose'>) => {
     const id = Math.random().toString(36);
     setToasts((prev) => {
       const newToasts = [...prev, { id, props }];
-      // 最多保留5个toast，超过则移除最早的
       return newToasts.length > 5 ? newToasts.slice(-5) : newToasts;
     });
-  };
+  }, []);
 
-  const remove = (id: string) => {
+  const remove = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
-  };
+  }, []);
 
-  return {
-    show,
-    ToastContainer: () => (
-      <div className="fixed top-20 right-4 z-50 flex flex-col items-end gap-2 pointer-events-none">
-        {toasts.map((toast) => (
-          <div key={toast.id} className="pointer-events-auto">
-            <Toast
-              {...toast.props}
-              onClose={() => remove(toast.id)}
-            />
-          </div>
-        ))}
-      </div>
-    ),
-  };
+  const ToastContainer = () => (
+    <div className="fixed top-20 right-4 z-50 flex flex-col items-end gap-2 pointer-events-none">
+      {toasts.map((toast) => (
+        <div key={toast.id} className="pointer-events-auto">
+          <Toast
+            {...toast.props}
+            onClose={() => remove(toast.id)}
+          />
+        </div>
+      ))}
+    </div>
+  );
+
+  return { show, ToastContainer };
 };
 

@@ -7,6 +7,7 @@ import uuid
 import fitz
 from PIL import Image, ImageDraw, ImageFont
 from flask import Blueprint, jsonify, request, send_file, current_app
+from werkzeug.utils import secure_filename
 
 from models import db, DiagnosisTask, Project
 
@@ -192,6 +193,46 @@ def _build_optimization_prompt(result: dict) -> str:
 
     return '\n'.join(lines)
 
+@diagnosis_bp.route('/upload', methods=['POST'])
+def diagnosis_upload():
+    try:
+        if 'file' not in request.files:
+            return jsonify({'code': 400, 'message': '请上传文件'})
+
+        file = request.files['file']
+        original_filename = file.filename
+
+        if not original_filename or original_filename == '':
+            return jsonify({'code': 400, 'message': '未选择文件'})
+
+        ext = original_filename.rsplit('.', 1)[-1].lower() if '.' in original_filename else ''
+        if ext not in ('pdf', 'pptx'):
+            return jsonify({'code': 400, 'message': f'不支持的文件类型 .{ext}，仅支持 PDF 和 PPTX'})
+
+        filename = secure_filename(original_filename)
+        if not filename:
+            filename = f"diagnosis_{uuid.uuid4().hex[:8]}.{ext}"
+
+        upload_folder = current_app.config['UPLOAD_FOLDER']
+        diagnosis_dir = os.path.join(upload_folder, 'diagnosis')
+        os.makedirs(diagnosis_dir, exist_ok=True)
+
+        unique_filename = f"{uuid.uuid4().hex[:8]}_{filename}"
+        file_path = os.path.join(diagnosis_dir, unique_filename)
+        file.save(file_path)
+
+        logger.info(f"诊断文件已上传: {original_filename} -> {file_path}")
+
+        return jsonify({
+            'code': 200,
+            'data': {
+                'file_path': file_path,
+                'file_type': ext,
+            }
+        })
+    except Exception as e:
+        logger.error(f"上传诊断文件失败: {e}")
+        return jsonify({'code': 500, 'message': str(e)})
 @diagnosis_bp.route("", methods=['POST'])
 def create_diagnosis():
     """提交诊断任务"""
@@ -366,11 +407,13 @@ def apply(id):
 
         # 如果是 pptx，优先使用同名 PDF；否则直接复制原文件
         target_filename = os.path.basename(source_path)
+        effective_file_type = task.file_type  # 实际用于 _count_pages 的文件类型
         if task.file_type == 'pptx':
             pdf_candidate = os.path.splitext(source_path)[0] + '.pdf'
             if os.path.exists(pdf_candidate):
                 source_path = pdf_candidate
                 target_filename = os.path.basename(pdf_candidate)
+                effective_file_type = 'pdf'  # 实际用的是 PDF 副本
                 logger.info(f"[apply] PPTX → 使用同名 PDF: {source_path}")
 
         dest_path = os.path.join(template_dir, target_filename)
@@ -378,7 +421,7 @@ def apply(id):
             shutil.copy2(source_path, dest_path)
             logger.info(f"[apply] 源文件已复制: {dest_path}")
 
-        # 6. 创建 ReferenceFile 记录
+        # 6. 创建 ReferenceFile 记录（已解析完成，不需要再解析）
         if os.path.exists(task.file_path):
             try:
                 from models import ReferenceFile
@@ -388,16 +431,16 @@ def apply(id):
                     file_path=task.file_path,
                     file_size=os.path.getsize(task.file_path),
                     file_type=task.file_type,
-                    parse_status='pending',
+                    parse_status='completed',  # 诊断阶段已经分析过，不需要再触发 MinerU 解析
                 )
                 db.session.add(ref_file)
                 db.session.commit()
             except Exception as e:
                 logger.warning(f"[apply] 关联参考文件失败（非致命）: {e}")
 
-        # 7. 创建 Page 记录（翻新任务需要页面已存在）
+        # 7. 创建 Page 记录
         from services.diagnosis_service import _count_pages
-        total_pages = _count_pages(dest_path, task.file_type)
+        total_pages = _count_pages(dest_path, effective_file_type)
         if total_pages > 0:
             from models import Page as PageModel
             for i in range(total_pages):
@@ -411,14 +454,12 @@ def apply(id):
             db.session.commit()
             logger.info(f"[apply] 创建了 {total_pages} 个页面")
 
-        # 8. 提交翻新任务
+        # 8. 提交诊断优化任务（基于诊断结果直接生成优化内容，跳过 MinerU 重解析）
         renovation_task_id = None
         if total_pages > 0:
             try:
-                from services.task_manager import task_manager, process_ppt_renovation_task
+                from services.task_manager import task_manager, process_diagnosis_optimization_task
                 from services.ai_service_manager import get_ai_service
-                from services.file_service import FileService
-                from services.file_parser_service import FileParserService
                 from models import Task as TaskModel
 
                 app_obj = current_app._get_current_object() if current_app else None
@@ -427,7 +468,7 @@ def apply(id):
                 ren_task = TaskModel(
                     id=str(uuid.uuid4()),
                     project_id=new_project.id,
-                    task_type='PPT_RENOVATION',
+                    task_type='DIAGNOSIS_OPTIMIZATION',
                     status='PENDING',
                 )
                 ren_task.set_progress({'current': 0, 'total': 0, 'percentage': 0})
@@ -436,26 +477,23 @@ def apply(id):
                 renovation_task_id = ren_task.id
 
                 ai_service = get_ai_service()
-                file_service = FileService(current_app.config['UPLOAD_FOLDER'])
-                file_parser = FileParserService()
 
+                # 直接把诊断结果传给优化任务，不再走 MinerU 文件解析
                 task_manager.submit_task(
                     ren_task.id,
-                    process_ppt_renovation_task,
+                    process_diagnosis_optimization_task,
                     new_project.id,
+                    result,       # 诊断结果 dict: {score, summary, pages: [...]}
                     ai_service,
-                    file_service,
-                    file_parser,
-                    False,   # keep_layout
-                    5,       # max_workers
+                    5,            # max_workers
                     app_obj,
                     'zh',
                 )
-                logger.info(f"[apply] 翻新任务 {ren_task.id} → 项目 {new_project.id}")
+                logger.info(f"[apply] 诊断优化任务 {ren_task.id} → 项目 {new_project.id}")
             except Exception as e:
-                logger.warning(f"[apply] 提交翻新任务失败（项目已创建，可手动触发生成）: {e}")
+                logger.warning(f"[apply] 提交优化任务失败（项目已创建，可手动触发生成）: {e}")
         else:
-            logger.warning(f"[apply] 无法读取源文件页数，跳过翻新任务。项目已创建，可手动上传参考文件。")
+            logger.warning(f"[apply] 无法读取源文件页数，跳过优化任务。项目已创建，可手动上传参考文件。")
 
         return jsonify({
             'code': 200,

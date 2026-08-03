@@ -109,6 +109,35 @@ def _diagnosis_summary_prompt(all_page_results: list) -> str:
 # 辅助函数
 # ---------------------------------------------------------------------------
 
+def _pptx_to_pdf(pptx_path: str) -> str | None:
+    """用 LibreOffice 将 PPTX 转成 PDF，返回 PDF 路径，失败返回 None"""
+    import subprocess
+    import shutil
+
+    soffice = r"C:\Program Files\LibreOffice\program\soffice.exe"
+    if not os.path.exists(soffice):
+        logger.warning("LibreOffice 未安装，无法转换 PPTX")
+        return None
+
+    output_dir = os.path.dirname(pptx_path)
+    try:
+        result = subprocess.run(
+            [soffice, "--headless", "--convert-to", "pdf", "--outdir", output_dir, pptx_path],
+            capture_output=True, text=True, timeout=120,
+        )
+        if result.returncode != 0:
+            logger.warning(f"PPTX 转 PDF 失败: {result.stderr}")
+            return None
+    except Exception as e:
+        logger.warning(f"执行 LibreOffice 失败: {e}")
+        return None
+
+    pdf_path = os.path.splitext(pptx_path)[0] + ".pdf"
+    if os.path.exists(pdf_path):
+        return pdf_path
+    return None
+
+
 def _render_page_to_image(file_path: str, file_type: str, page_num: int):
     """用PyMuPDF渲染指定页为PIL Image，返回Image或None"""
     try:
@@ -117,13 +146,14 @@ def _render_page_to_image(file_path: str, file_type: str, page_num: int):
 
         pdf_path = file_path
         if file_type == "pptx":
-            # 尝试找同名 PDF
-            base = os.path.splitext(file_path)[0]
-            candidate = base + ".pdf"
+            # 先尝试同名 PDF，没有就用 LibreOffice 转换
+            candidate = os.path.splitext(file_path)[0] + ".pdf"
             if os.path.exists(candidate):
                 pdf_path = candidate
             else:
-                return None
+                pdf_path = _pptx_to_pdf(file_path)
+                if not pdf_path:
+                    return None
 
         doc = fitz.open(pdf_path)
         if page_num < 1 or page_num > len(doc):
@@ -141,17 +171,18 @@ def _render_page_to_image(file_path: str, file_type: str, page_num: int):
 
 def _count_pages(file_path: str, file_type: str) -> int:
     """获取文件总页数"""
+    if file_type == "pptx":
+        try:
+            from pptx import Presentation
+            prs = Presentation(file_path)
+            return len(prs.slides)
+        except Exception as e:
+            logger.warning(f"PPTX读取页数失败: {e}")
+            return 0
+
     try:
         import fitz
-        pdf_path = file_path
-        if file_type == "pptx":
-            base = os.path.splitext(file_path)[0]
-            candidate = base + ".pdf"
-            if os.path.exists(candidate):
-                pdf_path = candidate
-            else:
-                return 0
-        doc = fitz.open(pdf_path)
+        doc = fitz.open(file_path)
         count = len(doc)
         doc.close()
         return count

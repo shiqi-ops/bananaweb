@@ -1033,3 +1033,71 @@ Only output the style description text, no other content.
 """
     logger.debug(f"[get_style_extraction_prompt] Final prompt:\n{prompt}")
     return prompt
+
+
+def get_diagnosis_optimization_prompt(page_diagnosis: dict, page_num: int, language: str = None) -> str:
+    """根据诊断结果生成页面优化 prompt，让 AI 生成优化后的标题/要点/描述"""
+    issues_lines = []
+
+    for issue in page_diagnosis.get('layout_issues', []):
+        sev = issue.get('severity', '')
+        desc = issue.get('description', '')
+        sug = issue.get('suggestion', '')
+        issues_lines.append(f"- [排版·{sev}] {desc} → 建议: {sug}")
+
+    for issue in page_diagnosis.get('color_issues', []):
+        sev = issue.get('severity', '')
+        desc = issue.get('description', '')
+        sug = issue.get('suggestion', '')
+        issues_lines.append(f"- [配色·{sev}] {desc} → 建议: {sug}")
+
+    for issue in page_diagnosis.get('logic_issues', []):
+        sev = issue.get('severity', '')
+        desc = issue.get('description', '')
+        sug = issue.get('suggestion', '')
+        issues_lines.append(f"- [逻辑·{sev}] {desc} → 建议: {sug}")
+
+    for s in page_diagnosis.get('text_suggestions', []):
+        orig = s.get('original', '')
+        sugg = s.get('suggested', '')
+        reason = s.get('reason', '')
+        issues_lines.append(f"- [文字]「{orig}」→ 建议改为「{sugg}」。理由: {reason}")
+
+    issues_block = '\n'.join(issues_lines) if issues_lines else '本页无明显问题，保持当前内容即可。'
+
+    prompt = f"""\
+You are a professional PPT designer optimizing a slide based on expert diagnosis feedback.
+
+The following issues were identified on slide #{page_num}:
+
+<diagnosis>
+{issues_block}
+</diagnosis>
+
+Your task: generate optimized content for this slide that addresses all the issues above. Output a JSON object with:
+
+1. **title**: A clear, polished slide title that incorporates the text improvement suggestions
+2. **points**: 3-5 key bullet points, each refined based on the diagnosis feedback
+3. **description**: A complete Chinese description for regenerating this slide, following this format:
+
+页面标题：[title]
+
+页面文字：
+- [point 1]
+- [point 2]
+...
+
+页面排版与视觉：
+- 描述优化后的布局、配色、视觉元素安排（融入诊断建议中的改进方案）
+
+Rules:
+- Apply ALL text suggestions: use the "建议改为" text where provided
+- Fix layout issues: describe the corrected layout in the description
+- Fix color issues: specify improved color choices in the description
+- Fix logic issues: restructure points to improve clarity and flow
+- If a category has no issues, preserve the original approach
+- Return only the JSON, no other text
+{get_language_instruction(language)}
+"""
+    logger.debug(f"[get_diagnosis_optimization_prompt] page {page_num}, issues: {len(issues_lines)}")
+    return prompt

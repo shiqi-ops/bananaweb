@@ -116,6 +116,7 @@ def pay_order(id):
     db.session.commit()
     return jsonify({'code': 200, 'message': 'success'})
 @order_bp.route("/<string:id>/pay_status", methods=['GET'])
+@order_bp.route("/<string:id>/payment-status", methods=['GET'])
 def pay_status(id):
     try:
         if id is None:

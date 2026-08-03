@@ -1386,8 +1386,11 @@ def create_ppt_renovation_project():
         pdf_path = str(original_path)
         if safe_name.lower().endswith(('.pptx', '.ppt')):
             try:
+                soffice = r"C:\Program Files\LibreOffice\program\soffice.exe"
+                if not os.path.exists(soffice):
+                    soffice = "libreoffice"  # fallback for Linux
                 subprocess.run(
-                    ['libreoffice', '--headless', '--convert-to', 'pdf', '--outdir', str(template_dir), str(original_path)],
+                    [soffice, '--headless', '--convert-to', 'pdf', '--outdir', str(template_dir), str(original_path)],
                     check=True, timeout=120, capture_output=True
                 )
                 pdf_name = safe_name.rsplit('.', 1)[0] + '.pdf'

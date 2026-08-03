@@ -1127,6 +1127,192 @@ def process_ppt_renovation_task(task_id: str, project_id: str, ai_service,
             db.session.commit()
 
 
+def process_diagnosis_optimization_task(task_id: str, project_id: str,
+                                         diagnosis_result: dict, ai_service,
+                                         max_workers: int = 5, app=None,
+                                         language: str = 'zh'):
+    """
+    基于诊断结果直接生成优化后的页面内容，跳过 MinerU 文件重解析。
+
+    对每一页，将诊断问题 + 建议组装成 prompt，交给 AI 生成优化后的
+    title / points / description，直接写入 DB。
+
+    Args:
+        task_id: Task ID
+        project_id: Project ID
+        diagnosis_result: 诊断结果 dict，格式 {score, summary, pages: [{page_number, layout_issues, ...}]}
+        ai_service: AI service 实例
+        max_workers: 最大并发数
+        app: Flask app 实例
+        language: 输出语言
+    """
+    if app is None:
+        raise ValueError("Flask app instance must be provided")
+
+    with app.app_context():
+        try:
+            task = Task.query.get(task_id)
+            if not task:
+                logger.error(f"Task {task_id} not found")
+                return
+
+            task.status = 'PROCESSING'
+            db.session.commit()
+
+            from models import Project
+            project = Project.query.get(project_id)
+            if not project:
+                raise ValueError(f"Project {project_id} not found")
+
+            from services.prompts import get_diagnosis_optimization_prompt
+
+            pages_data = diagnosis_result.get('pages', [])
+            if not pages_data:
+                raise ValueError("诊断结果中无页面数据")
+
+            # 获取项目已有页面
+            db_pages = Page.query.filter_by(project_id=project_id)\
+                          .order_by(Page.order_index).all()
+
+            # 取诊断页数和 DB 页数的较小值
+            page_count = min(len(db_pages), len(pages_data))
+            if page_count == 0:
+                raise ValueError("No pages to process")
+
+            task.set_progress({
+                "total": page_count,
+                "completed": 0,
+                "failed": 0,
+                "current_step": "optimizing"
+            })
+            db.session.commit()
+
+            logger.info(f"[diagnosis-opt] 开始优化 {page_count} 页 (基于诊断结果)")
+
+            import threading
+            progress_lock = threading.Lock()
+            completed = 0
+            failed = 0
+            extraction_errors = []
+            content_results = {}  # index -> {title, points, description}
+
+            def process_single_page(idx):
+                nonlocal completed, failed
+                with app.app_context():
+                    try:
+                        page_diag = pages_data[idx]
+                        page_num = page_diag.get('page_number', idx + 1)
+
+                        # 构建 prompt 并调用 AI
+                        prompt = get_diagnosis_optimization_prompt(
+                            page_diag, page_num, language=language
+                        )
+                        content = ai_service.generate_json(prompt, thinking_budget=1000)
+
+                        if not isinstance(content, dict):
+                            raise ValueError(f"Expected dict, got {type(content)}")
+
+                        content.setdefault('title', f'第{page_num}页')
+                        content.setdefault('points', [])
+                        content.setdefault('description', '')
+
+                        # 写入 DB
+                        content_results[idx] = content
+                        page_obj = Page.query.get(db_pages[idx].id)
+                        if page_obj:
+                            page_obj.set_outline_content({
+                                'title': content['title'],
+                                'points': content['points']
+                            })
+                            page_obj.set_description_content({
+                                "text": content['description'],
+                                "generated_at": datetime.utcnow().isoformat()
+                            })
+                            page_obj.status = 'DESCRIPTION_GENERATED'
+                            db.session.commit()
+
+                        with progress_lock:
+                            completed += 1
+                            task_obj = Task.query.get(task_id)
+                            if task_obj:
+                                task_obj.update_progress(completed=completed, failed=failed)
+                                db.session.commit()
+
+                        logger.info(f"[diagnosis-opt] 第 {page_num} 页优化完成 ({completed}/{page_count})")
+
+                    except Exception as e:
+                        logger.error(f"[diagnosis-opt] 第 {idx+1} 页优化失败: {e}")
+                        with progress_lock:
+                            failed += 1
+                            extraction_errors.append(str(e))
+                            task_obj = Task.query.get(task_id)
+                            if task_obj:
+                                task_obj.update_progress(completed=completed, failed=failed)
+                                db.session.commit()
+
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                futures = [
+                    executor.submit(process_single_page, i)
+                    for i in range(page_count)
+                ]
+                for future in as_completed(futures):
+                    future.result()
+
+            logger.info(f"[diagnosis-opt] 全部完成: {completed} 成功, {failed} 失败")
+
+            if failed > 0:
+                reason = extraction_errors[0] if extraction_errors else "未知错误"
+                raise ValueError(f"{failed}/{page_count} 页内容优化失败: {reason}")
+
+            # 更新项目级聚合文本
+            project = Project.query.get(project_id)
+            if project:
+                all_descriptions = []
+                for i in range(page_count):
+                    content = content_results.get(i, {})
+                    desc = content.get('description', '')
+                    if desc:
+                        all_descriptions.append(desc)
+                if all_descriptions:
+                    project.description_text = "\n\n".join(all_descriptions)
+                project.status = 'DESCRIPTIONS_GENERATED'
+                project.updated_at = datetime.utcnow()
+
+            db.session.commit()
+
+            # 标记任务完成
+            task = Task.query.get(task_id)
+            if task:
+                task.status = 'COMPLETED'
+                task.completed_at = datetime.utcnow()
+                task.set_progress({
+                    "total": page_count,
+                    "completed": completed,
+                    "failed": failed,
+                    "current_step": "done"
+                })
+                db.session.commit()
+
+            logger.info(f"[diagnosis-opt] Task {task_id} COMPLETED")
+
+        except Exception as e:
+            import traceback
+            error_detail = traceback.format_exc()
+            logger.error(f"[diagnosis-opt] Task {task_id} FAILED: {error_detail}")
+
+            task = Task.query.get(task_id)
+            if task:
+                task.status = 'FAILED'
+                task.error_message = str(e)
+                task.completed_at = datetime.utcnow()
+
+            project = Project.query.get(project_id)
+            if project:
+                project.status = 'DRAFT'
+
+            db.session.commit()
+
+
 def export_editable_pptx_with_recursive_analysis_task(
     task_id: str,
     project_id: str,

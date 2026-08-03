@@ -1,3 +1,4 @@
+import json
 import uuid
 import logging
 from datetime import datetime
@@ -19,18 +20,27 @@ class DiagnosisTask(db.Model):
     error_message   = Column(Text, nullable=True)
     created_at      = Column(DateTime, default=datetime.utcnow)
     completed_at    = Column(DateTime, nullable=True)
+
     def to_dict(self):
+        result_data = None
+        if self.result:
+            try:
+                result_data = json.loads(self.result)
+            except (json.JSONDecodeError, TypeError):
+                result_data = self.result
+
         return {
             'id': self.id,
+            'task_id': self.id,
             'user_id': self.user_id,
             'file_path': self.file_path,
             'file_type': self.file_type,
             'diagnosis_options': self.diagnosis_options,
             'status': self.status,
-            'result': self.result,
+            'result': result_data,
             'error_message': self.error_message,
-            'created_at': self.created_at,
-            'completed_at': self.completed_at,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'completed_at': self.completed_at.isoformat() if self.completed_at else None,
         }
     @classmethod
     def get_by_id(cls, id):
