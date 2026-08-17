@@ -27,6 +27,8 @@ class CustomOrder(db.Model):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     def to_dict(self):
+        def _iso(dt):
+            return dt.isoformat() if dt else None
         return {
             'id': self.id,
             'user_id': self.user_id,
@@ -38,13 +40,13 @@ class CustomOrder(db.Model):
             'usage_scenario': self.usage_scenario,
             'style_id': self.style_id,
             'mentor_id': self.mentor_id,
-            'deadline': self.deadline,
+            'deadline': _iso(self.deadline),
             'price': self.price,
             'status': self.status,
             'payment_status': self.payment_status,
             'reference_files': self.reference_files,
-            'created_at': self.created_at,
-            'updated_at': self.updated_at,
+            'created_at': _iso(self.created_at),
+            'updated_at': _iso(self.updated_at),
         }
 
     @classmethod
@@ -67,6 +69,13 @@ class CustomOrder(db.Model):
         except Exception as e:
             logging.error(e)
             return None
+    @classmethod
+    def get_by_user(cls, user_id):
+        try:
+            return cls.query.filter_by(user_id=user_id).order_by(cls.created_at.desc()).all()
+        except Exception as e:
+            logging.error(e)
+            return []
     @classmethod
     def update_by_id(cls,data):
         try:

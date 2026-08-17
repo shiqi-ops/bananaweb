@@ -8,8 +8,9 @@ import { cn } from '@/utils';
 // --- 类型定义 ---
 
 interface DiagnosisPageItem {
-  page_num: number;
-  problems: string[];
+  page_number?: number;
+  page_num?: number;
+  [key: string]: any;
 }
 
 interface DiagnosisResult {
@@ -183,7 +184,6 @@ export const DiagnosisPage: React.FC = () => {
     if (!taskId) return;
     setIsApplying(true);
     try {
-<<<<<<< HEAD
       const response = await apiClient.post<{ data?: { project_id: string; task_id: string } }>(
         `/api/diagnosis/${taskId}/apply`,
         {}
@@ -194,12 +194,6 @@ export const DiagnosisPage: React.FC = () => {
       }
       show({ message: '优化已应用成功', type: 'success' });
       navigate(`/project/${projectId}/detail`);
-=======
-      await apiClient.post(`/api/diagnosis/${taskId}/apply`);
-      show({ message: '优化已应用成功', type: 'success' });
-      // 跳转到项目页（占位路由）
-      navigate('/projects/optimized');
->>>>>>> 741b30ea31b74212ca1a239915b104285bb1c469
     } catch (error: any) {
       const msg = error?.response?.data?.error?.message || error?.message || '应用优化失败';
       show({ message: msg, type: 'error' });
@@ -403,7 +397,6 @@ export const DiagnosisPage: React.FC = () => {
               问题详情
             </h3>
 
-<<<<<<< HEAD
             {currentPageData && (() => {
               const pageNum = currentPageData.page_number ?? currentPageData.page_num ?? currentPage;
               const categories: { label: string; key: string; color: string }[] = [
@@ -417,84 +410,51 @@ export const DiagnosisPage: React.FC = () => {
               );
 
               return (
-              <Card className="p-4 md:p-6">
-                <div className="flex flex-col md:flex-row gap-4">
-                  {taskId && (
-                    <div className="flex-shrink-0 w-full md:w-48 h-36 bg-gray-100 dark:bg-background-hover rounded-lg overflow-hidden">
-                      <img
-                        src={`/api/diagnosis/${taskId}/preview/${pageNum}`}
-                        alt={`第 ${pageNum} 页`}
-=======
-            {currentPageData && (
-              <Card className="p-4 md:p-6">
-                <div className="flex flex-col md:flex-row gap-4">
-                  {/* 预览图 */}
-                  {taskId && (
-                    <div className="flex-shrink-0 w-full md:w-48 h-36 bg-gray-100 dark:bg-background-hover rounded-lg overflow-hidden">
-                      <img
-                        src={`/api/diagnosis/${taskId}/preview/${currentPageData.page_num}`}
-                        alt={`第 ${currentPageData.page_num} 页`}
->>>>>>> 741b30ea31b74212ca1a239915b104285bb1c469
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = '';
-                          (e.target as HTMLImageElement).style.display = 'none';
-                        }}
-                      />
-                    </div>
-                  )}
-<<<<<<< HEAD
-                  <div className="flex-1 min-w-0">
-                    <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
-                      第 {pageNum} 页问题
-                    </h4>
-                    {allIssues.length > 0 ? (
-                      <ul className="space-y-2">
-                        {allIssues.map((item, idx) => (
-                          <li
-                            key={idx}
-                            className={`flex items-start gap-2 text-sm text-gray-600 dark:text-foreground-secondary border-l-2 ${item._color} pl-2`}
-                          >
-                            <AlertCircle size={14} className="mt-0.5 flex-shrink-0 text-orange-500" />
-                            <div>
-                              <span className="text-xs text-gray-400 mr-1">[{item._category}]</span>
-                              <span>{item.description || item.suggested || item.suggestion || JSON.stringify(item)}</span>
-                            </div>
-=======
-
-                  {/* 问题列表 */}
-                  <div className="flex-1 min-w-0">
-                    <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
-                      第 {currentPageData.page_num} 页问题
-                    </h4>
-                    {currentPageData.problems.length > 0 ? (
-                      <ul className="space-y-2">
-                        {currentPageData.problems.map((problem, idx) => (
-                          <li
-                            key={idx}
-                            className="flex items-start gap-2 text-sm text-gray-600 dark:text-foreground-secondary"
-                          >
-                            <AlertCircle size={14} className="mt-0.5 flex-shrink-0 text-orange-500" />
-                            <span>{problem}</span>
->>>>>>> 741b30ea31b74212ca1a239915b104285bb1c469
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
-                        <CheckCircle size={14} />
-                        <span>暂无问题</span>
+                <Card className="p-4 md:p-6">
+                  <div className="flex flex-col md:flex-row gap-4">
+                    {taskId && (
+                      <div className="flex-shrink-0 w-full md:w-48 h-36 bg-gray-100 dark:bg-background-hover rounded-lg overflow-hidden">
+                        <img
+                          src={`/api/diagnosis/${taskId}/preview/${pageNum}`}
+                          alt={`第 ${pageNum} 页`}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = '';
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
                       </div>
                     )}
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
+                        第 {pageNum} 页问题
+                      </h4>
+                      {allIssues.length > 0 ? (
+                        <ul className="space-y-2">
+                          {allIssues.map((item, idx) => (
+                            <li
+                              key={idx}
+                              className={`flex items-start gap-2 text-sm text-gray-600 dark:text-foreground-secondary border-l-2 ${item._color} pl-2`}
+                            >
+                              <AlertCircle size={14} className="mt-0.5 flex-shrink-0 text-orange-500" />
+                              <div>
+                                <span className="text-xs text-gray-400 mr-1">[{item._category}]</span>
+                                <span>{item.description || item.suggested || item.suggestion || JSON.stringify(item)}</span>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
+                          <CheckCircle size={14} />
+                          <span>暂无问题</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </Card>
-<<<<<<< HEAD
+                </Card>
               );
             })()}
-=======
-            )}
->>>>>>> 741b30ea31b74212ca1a239915b104285bb1c469
 
             {/* 分页导航 */}
             {totalPages > 1 && (

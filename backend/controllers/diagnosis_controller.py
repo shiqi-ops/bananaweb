@@ -428,7 +428,6 @@ def apply(id):
         # 4. 创建新 Project
         new_project = Project(
             id=str(uuid.uuid4()),
-            user_id=task.user_id,
             idea_prompt=optimization_prompt,
             creation_type='ppt_renovation',
             status='DRAFT',
@@ -491,6 +490,7 @@ def apply(id):
             db.session.commit()
             logger.info(f"[apply] 创建了 {total_pages} 个页面")
 
+        renovation_task_id = None
         if total_pages > 0:
             try:
                 from services.task_manager import task_manager, process_diagnosis_optimization_task

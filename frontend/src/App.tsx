@@ -8,6 +8,7 @@ import { DetailEditor } from './pages/DetailEditor';
 import { SlidePreview } from './pages/SlidePreview';
 import { DiagnosisPage } from './pages/DiagnosisPage';
 import { CustomOrderPage } from './pages/CustomOrderPage';
+import { OrderHistoryPage } from './pages/OrderHistoryPage';
 import { SharePage } from './pages/SharePage';
 import { SettingsPage } from './pages/Settings';
 import { useProjectStore } from './store/useProjectStore';
@@ -46,6 +47,7 @@ function App() {
           <Route path="/project/:projectId/preview" element={<SlidePreview />} />
           <Route path="/diagnosis" element={<DiagnosisPage />} />
           <Route path="/custom" element={<CustomOrderPage />} />
+          <Route path="/orders" element={<OrderHistoryPage />} />
           <Route path="/share" element={<SharePage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

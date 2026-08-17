@@ -39,7 +39,7 @@ class Config:
     UPLOAD_FOLDER = os.path.join(PROJECT_ROOT, 'uploads')
     MAX_CONTENT_LENGTH = 200 * 1024 * 1024  # 200MB max file size
     ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
-    ALLOWED_REFERENCE_FILE_EXTENSIONS = {'pdf', 'docx', 'pptx', 'doc', 'ppt', 'xlsx', 'xls', 'csv', 'txt', 'md'}
+    ALLOWED_REFERENCE_FILE_EXTENSIONS = {'pdf', 'docx', 'pptx', 'doc', 'ppt', 'xlsx', 'xls', 'csv', 'txt', 'md', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'}
     
     # AI服务配置
     GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY', '')

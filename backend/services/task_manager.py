@@ -55,7 +55,7 @@ class TaskManager:
     
     def submit_task(self, task_id: str, func: Callable, *args, **kwargs):
         """Submit a background task"""
-        future = self.executor.submit(func, *args, **kwargs)
+        future = self.executor.submit(func, task_id, *args, **kwargs)
         
         with self.lock:
             self.active_tasks[task_id] = future

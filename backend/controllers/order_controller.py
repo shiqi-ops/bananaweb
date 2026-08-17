@@ -1,17 +1,35 @@
 from datetime import datetime
+import json
 
 from flask import Blueprint, request,jsonify
 import logging
-from models import CustomOrder, db
+from models import CustomOrder, db, Mentor
 
 order_bp = Blueprint('order', __name__,url_prefix='/api/orders')
 logging=logging.getLogger(__name__)
-def datatime_deal(raw_time:str):
-    try:
-        return datetime.strptime(raw_time, '%Y-%m-%d %H:%M:%S')
-    except Exception as e:
-        logging.error(e)
+def datatime_deal(raw_time: str):
+    if not raw_time:
         return None
+    formats = (
+        '%Y-%m-%d %H:%M:%S',
+        '%Y-%m-%d %H:%M',
+        '%Y-%m-%dT%H:%M:%S',
+        '%Y-%m-%dT%H:%M',
+    )
+    for fmt in formats:
+        try:
+            return datetime.strptime(raw_time, fmt)
+        except ValueError:
+            continue
+    logging.error(f"无法解析交付时间: {raw_time}")
+    return None
+
+def _serialize_reference_files(reference_files):
+    if reference_files is None:
+        return None
+    if isinstance(reference_files, str):
+        return reference_files
+    return json.dumps(reference_files, ensure_ascii=False)
 @order_bp.route("", methods=['POST'])
 def create_order():
     try:
@@ -30,13 +48,25 @@ def create_order():
             mentor_id=data.get('mentor_id'),
             deadline=datatime_deal(data.get('deadline')),
             price=data.get('price'),
-            reference_files=data.get('reference_files'),
+            reference_files=_serialize_reference_files(data.get('reference_files')),
         )
         result=CustomOrder.create_order(new_order)
         if result:
             return jsonify({"code": 200, "message": "success",'data':new_order.id})
         else:
             return jsonify({"code":400,'message':'创建失败，请重新尝试'})
+    except Exception as e:
+        logging.error(e)
+        return jsonify({"code": 400, "message": str(e)})
+@order_bp.route("", methods=['GET'])
+def list_orders():
+    try:
+        user_id = request.args.get('user_id')
+        if user_id:
+            orders = CustomOrder.query.filter_by(user_id=user_id).order_by(CustomOrder.created_at.desc()).all()
+        else:
+            orders = CustomOrder.query.order_by(CustomOrder.created_at.desc()).all()
+        return jsonify({'code': 200, 'message': 'success', 'data': [o.to_dict() for o in orders]})
     except Exception as e:
         logging.error(e)
         return jsonify({"code": 400, "message": str(e)})
@@ -69,9 +99,9 @@ def update_order(id):
             mentor_id=data.get('mentor_id'),
             deadline=datatime_deal(data.get('deadline')),
             price=data.get('price'),
-            reference_files=data.get('reference_files'),
+            reference_files=_serialize_reference_files(data.get('reference_files')),
         )
-        result=CustomOrder.update_by_id(data)
+        result=CustomOrder.update_by_id(new_order)
         if result:
             return jsonify({"code": 200, "message": "success"})
         else:
@@ -100,6 +130,10 @@ def compute_price():
         base_price=page_count*50
         if data.get('style_id'):
             base_price=base_price*1.2
+        if data.get('mentor_id'):
+            mentor=Mentor.query.filter_by(id=data.get('mentor_id')).first()
+            if mentor:
+                base_price+=mentor.price_per_hour*0.5*page_count
         return jsonify({'code':200,'message':'success','data':base_price})
     except Exception as e:
         logging.error(e)

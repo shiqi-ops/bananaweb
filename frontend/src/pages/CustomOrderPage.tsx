@@ -14,10 +14,12 @@ import {
   X,
   Loader2,
   CheckCircle,
+  ClipboardList,
   Send,
   CreditCard,
 } from 'lucide-react';
 import { apiClient } from '@/api/client';
+import { uploadReferenceFile } from '@/api/endpoints';
 import { Button, Card, Modal, useToast } from '@/components/shared';
 import { cn } from '@/utils';
 
@@ -35,18 +37,15 @@ interface Mentor {
   name: string;
   title?: string;
   avatar_url?: string;
+  price_per_hour?: number;
 }
 
-interface PriceResponse {
-  total_price: number;
-}
-
-interface OrderResponse {
-  order_id: string;
-}
-
-interface PaymentStatusResponse {
-  status: string;
+interface ReferenceFileItem {
+  key: string;
+  file: File;
+  id: string | null;
+  status: 'uploading' | 'uploaded' | 'error';
+  error?: string;
 }
 
 // --- 常量 ---
@@ -85,7 +84,7 @@ export const CustomOrderPage: React.FC = () => {
   const [priceLoading, setPriceLoading] = useState(false);
 
   // 参考素材上传状态
-  const [referenceFiles, setReferenceFiles] = useState<File[]>([]);
+  const [referenceFiles, setReferenceFiles] = useState<ReferenceFileItem[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // 提交订单状态
@@ -154,17 +153,12 @@ export const CustomOrderPage: React.FC = () => {
     const timer = setTimeout(async () => {
       setPriceLoading(true);
       try {
-        const response = await apiClient.post<{ data?: PriceResponse }>('/api/orders/prices', {
+        const response = await apiClient.post<{ data?: number }>('/api/orders/prices', {
           page_count: pageCount,
           style_id: selectedStyle,
           mentor_id: selectedMentor,
         });
-<<<<<<< HEAD
         setPrice(response.data?.data != null ? Math.round(response.data.data * 100) / 100 : null);
-=======
-        const totalPrice = response.data?.data?.total_price;
-        setPrice(totalPrice != null ? Math.round(totalPrice * 100) / 100 : null);
->>>>>>> 741b30ea31b74212ca1a239915b104285bb1c469
       } catch (error: any) {
         console.error('价格计算失败:', error);
         setPrice(null);
@@ -176,18 +170,44 @@ export const CustomOrderPage: React.FC = () => {
     return () => clearTimeout(timer);
   }, [pageCount, selectedStyle, selectedMentor]);
 
-  // 处理文件选择
+  // 处理文件选择：选中后立即上传，并实时更新每个文件的上传状态
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (files) {
-      setReferenceFiles((prev) => [...prev, ...Array.from(files)]);
+    if (files && files.length > 0) {
+      Array.from(files).forEach((file) => addReferenceFile(file));
     }
     e.target.value = '';
   };
 
+  // 添加并上传单个参考素材
+  const addReferenceFile = async (file: File) => {
+    const key = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    setReferenceFiles((prev) => [
+      ...prev,
+      { key, file, id: null, status: 'uploading' },
+    ]);
+
+    try {
+      const uploadRes = await uploadReferenceFile(file, null);
+      const uploaded = uploadRes?.data?.file;
+      if (uploaded?.id) {
+        setReferenceFiles((prev) =>
+          prev.map((it) => (it.key === key ? { ...it, id: uploaded.id, status: 'uploaded' } : it))
+        );
+      } else {
+        throw new Error('未返回文件 ID');
+      }
+    } catch (err: any) {
+      const msg = err?.response?.data?.error?.message || err?.message || '上传失败';
+      setReferenceFiles((prev) =>
+        prev.map((it) => (it.key === key ? { ...it, status: 'error', error: msg } : it))
+      );
+    }
+  };
+
   // 移除文件
-  const removeFile = (index: number) => {
-    setReferenceFiles((prev) => prev.filter((_, i) => i !== index));
+  const removeFile = (key: string) => {
+    setReferenceFiles((prev) => prev.filter((it) => it.key !== key));
   };
 
   // 提交订单
@@ -202,9 +222,23 @@ export const CustomOrderPage: React.FC = () => {
       return;
     }
 
+    // 参考素材状态校验：有仍在传或失败的不能提交
+    if (referenceFiles.some((f) => f.status === 'uploading')) {
+      show({ message: '参考素材仍在上传中，请稍候再提交', type: 'error' });
+      return;
+    }
+    if (referenceFiles.some((f) => f.status === 'error')) {
+      show({ message: '有参考素材上传失败，请先移除失败项', type: 'error' });
+      return;
+    }
+
+    // 收集已上传成功的参考素材文件 ID
+    const uploadedRefs = referenceFiles
+      .filter((f) => f.status === 'uploaded' && f.id)
+      .map((f) => ({ id: f.id as string, filename: f.file.name }));
+
     setSubmitting(true);
     try {
-<<<<<<< HEAD
       const payload: Record<string, any> = {
         user_id: 'user-001',
         contact_name: name.trim(),
@@ -217,33 +251,13 @@ export const CustomOrderPage: React.FC = () => {
       if (selectedStyle) payload.style_id = selectedStyle;
       if (selectedMentor) payload.mentor_id = selectedMentor;
       if (deliveryTime) payload.deadline = deliveryTime;
-      if (referenceFiles.length > 0) {
-        payload.reference_files = referenceFiles.map(f => f.name).join(',');
+      if (price != null) payload.price = price;
+      if (uploadedRefs.length > 0) {
+        payload.reference_files = uploadedRefs;
       }
 
-      const response = await apiClient.post<{ data?: OrderResponse }>('/api/orders', payload);
+      const response = await apiClient.post<{ data?: string }>('/api/orders', payload);
       const orderIdValue = response.data?.data;
-=======
-      const formData = new FormData();
-      formData.append('user_id', 'user-001');
-      formData.append('name', name.trim());
-      if (phone.trim()) formData.append('phone', phone.trim());
-      if (email.trim()) formData.append('email', email.trim());
-      formData.append('description', description.trim());
-      formData.append('page_count', String(pageCount));
-      if (useScenario.trim()) formData.append('use_scenario', useScenario.trim());
-      if (selectedStyle) formData.append('style_id', selectedStyle);
-      if (selectedMentor) formData.append('mentor_id', selectedMentor);
-      if (deliveryTime) formData.append('delivery_time', deliveryTime);
-
-      // 添加参考素材文件
-      referenceFiles.forEach((file) => {
-        formData.append('reference_files', file);
-      });
-
-      const response = await apiClient.post<{ data?: OrderResponse }>('/api/orders', formData);
-      const orderIdValue = response.data?.data?.order_id;
->>>>>>> 741b30ea31b74212ca1a239915b104285bb1c469
       if (orderIdValue) {
         setOrderId(orderIdValue);
         setShowPaymentModal(true);
@@ -281,21 +295,22 @@ export const CustomOrderPage: React.FC = () => {
     stopPolling();
     pollingRef.current = setInterval(async () => {
       try {
-        const response = await apiClient.get<{ data?: PaymentStatusResponse }>(
+        const response = await apiClient.get<{ data?: string }>(
           `/api/orders/${orderIdValue}/payment-status`
         );
-        const status = response.data?.data?.status;
-        if (status === 'completed' || status === 'paid') {
+        // 后端返回的 data 是 payment_status 字符串，如 'PAID' / 'UNPAID' / 'REFUNDED'
+        const status = response.data?.data;
+        if (status === 'PAID') {
           stopPolling();
           setPaymentPolling(false);
           setPaymentCompleted(true);
           show({ message: '支付完成', type: 'success' });
-        } else if (status === 'failed') {
+        } else if (status === 'REFUNDED') {
           stopPolling();
           setPaymentPolling(false);
           show({ message: '支付失败，请重试', type: 'error' });
         }
-        // 'pending' 或其他状态则继续轮询
+        // 'UNPAID' 或其他状态则继续轮询
       } catch (error: any) {
         console.error('支付轮询出错:', error);
         if (error?.response?.status === 404 || error?.response?.status >= 500) {
@@ -515,6 +530,11 @@ export const CustomOrderPage: React.FC = () => {
                   {mentor.title}
                 </p>
               )}
+              {mentor.price_per_hour != null && (
+                <p className="text-xs font-semibold text-banana-600 dark:text-banana text-center mt-1">
+                  ¥{mentor.price_per_hour}/时
+                </p>
+              )}
               {selectedMentor === mentor.id && (
                 <CheckCircle
                   size={16}
@@ -588,35 +608,54 @@ export const CustomOrderPage: React.FC = () => {
           点击上传参考素材
         </p>
         <p className="text-xs text-gray-400 dark:text-foreground-tertiary mt-1">
-          支持多文件上传
+          支持多文件上传（文档 / 图片），选中后自动上传
         </p>
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          className="hidden"
-          onChange={handleFileChange}
-        />
       </div>
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        accept=".pdf,.docx,.pptx,.doc,.ppt,.xlsx,.xls,.csv,.txt,.md,.png,.jpg,.jpeg,.gif,.webp,.bmp"
+        className="hidden"
+        onChange={handleFileChange}
+      />
       {referenceFiles.length > 0 && (
         <div className="space-y-2">
-          {referenceFiles.map((file, index) => (
+          {referenceFiles.map((item) => (
             <div
-              key={`${file.name}-${index}`}
+              key={item.key}
               className="flex items-center gap-2 bg-gray-50 dark:bg-background-hover rounded-lg px-3 py-2"
             >
               <FileText size={16} className="text-gray-400 dark:text-foreground-tertiary flex-shrink-0" />
               <span className="flex-1 text-sm text-gray-700 dark:text-foreground-secondary truncate">
-                {file.name}
+                {item.file.name}
               </span>
               <span className="text-xs text-gray-400 dark:text-foreground-tertiary flex-shrink-0">
-                {(file.size / 1024).toFixed(1)} KB
+                {(item.file.size / 1024).toFixed(1)} KB
               </span>
+              {item.status === 'uploading' && (
+                <span className="text-xs text-banana-600 dark:text-banana flex items-center gap-1 flex-shrink-0">
+                  <Loader2 size={14} className="animate-spin" /> 上传中…
+                </span>
+              )}
+              {item.status === 'uploaded' && (
+                <span className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1 flex-shrink-0">
+                  <CheckCircle size={14} /> 已上传
+                </span>
+              )}
+              {item.status === 'error' && (
+                <span
+                  className="text-xs text-red-500 flex items-center gap-1 flex-shrink-0"
+                  title={item.error}
+                >
+                  上传失败
+                </span>
+              )}
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  removeFile(index);
+                  removeFile(item.key);
                 }}
                 className="text-gray-400 hover:text-red-500 transition-colors flex-shrink-0"
               >
@@ -708,16 +747,26 @@ export const CustomOrderPage: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-orange-50/30 to-pink-50/50 dark:from-background-primary dark:via-background-primary dark:to-background-primary">
       {/* 页面头 */}
       <div className="max-w-4xl mx-auto px-4 pt-10 pb-6">
-        <div className="flex items-center gap-3 mb-2">
-          <button
-            onClick={() => navigate(-1)}
-            className="p-1.5 rounded-lg text-gray-500 dark:text-foreground-tertiary hover:bg-gray-100 dark:hover:bg-background-hover transition-colors"
+        <div className="flex items-center justify-between gap-3 mb-2">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate(-1)}
+              className="p-1.5 rounded-lg text-gray-500 dark:text-foreground-tertiary hover:bg-gray-100 dark:hover:bg-background-hover transition-colors"
+            >
+              <ChevronLeft size={20} />
+            </button>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
+              私人定制下单
+            </h1>
+          </div>
+          <Button
+            variant="secondary"
+            size="sm"
+            icon={<ClipboardList size={16} />}
+            onClick={() => navigate('/orders')}
           >
-            <ChevronLeft size={20} />
-          </button>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
-            私人定制下单
-          </h1>
+            我的订单
+          </Button>
         </div>
         <p className="text-sm text-gray-500 dark:text-foreground-tertiary ml-9">
           填写需求信息，AI 将为您量身定制专属 PPT

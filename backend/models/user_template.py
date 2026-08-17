@@ -20,7 +20,6 @@ class UserTemplate(db.Model):
     file_size = db.Column(db.Integer, nullable=True)  # File size in bytes
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
-
     def to_dict(self):
         """Convert to dictionary"""
         # Use thumbnail for preview if available
