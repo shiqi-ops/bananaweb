@@ -26,6 +26,7 @@ class CustomOrder(db.Model):
     reference_files = Column(Text, nullable=True)  # JSON: 参考素材文件路径列表
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    project_id = Column(String(36), nullable=True)  # 关联自动生成的 PPT 项目
     def to_dict(self):
         def _iso(dt):
             return dt.isoformat() if dt else None
@@ -47,6 +48,7 @@ class CustomOrder(db.Model):
             'reference_files': self.reference_files,
             'created_at': _iso(self.created_at),
             'updated_at': _iso(self.updated_at),
+            'project_id': self.project_id
         }
 
     @classmethod

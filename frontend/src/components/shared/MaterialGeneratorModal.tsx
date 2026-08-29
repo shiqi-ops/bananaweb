@@ -178,7 +178,9 @@ export const MaterialGeneratorModal: React.FC<MaterialGeneratorModalProps> = ({
 
   const pollMaterialTask = async (taskId: string) => {
     const targetProjectId = projectId || 'global';
-    const maxAttempts = 60;
+    // doubao/LazyLLM 单张素材生成实测约 3.5 分钟（215s），
+    // 轮询上限从 120s 放宽到 300s，避免"图片其实已生成、只是前端提前超时"。
+    const maxAttempts = 150; // 150 × 2s = 300s
     let attempts = 0;
 
     const poll = async () => {

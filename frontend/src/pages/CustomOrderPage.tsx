@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   ChevronLeft,
   User,
@@ -62,7 +62,18 @@ export const CustomOrderPage: React.FC = () => {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
-  const [description, setDescription] = useState('');
+
+  // 从 PPT 诊断页跳转过来时，把诊断结果作为「需求描述」的初始内容
+  const location = useLocation();
+  const diagState = location.state as
+    | { from?: string; summary?: string; score?: number | null }
+    | null;
+  const [description, setDescription] = useState(() => {
+    if (!diagState?.summary) return '';
+    const scoreLine =
+      diagState.score != null ? `综合评分：${diagState.score} 分\n\n` : '';
+    return `【PPT 诊断结果】\n${scoreLine}${diagState.summary}`;
+  });
   const [pageCount, setPageCount] = useState<number>(10);
   const [useScenario, setUseScenario] = useState('');
 

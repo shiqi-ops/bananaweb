@@ -1,9 +1,11 @@
 from datetime import datetime
 import json
 
-from flask import Blueprint, request,jsonify
+from flask import Blueprint, request, jsonify, current_app
 import logging
-from models import CustomOrder, db, Mentor
+from models import CustomOrder, db, Mentor, Project
+from services.order_service import generate_ppt_for_order
+from services.task_manager import task_manager
 
 order_bp = Blueprint('order', __name__,url_prefix='/api/orders')
 logging=logging.getLogger(__name__)
@@ -76,7 +78,13 @@ def get_by_id(id):
         data=CustomOrder.get_by_id(id)
         if not data:
             return jsonify({'code':200,'message':'没有找到，请重新输入'})
-        return jsonify({'code':200,'data':data.to_dict()})
+        result = data.to_dict()
+        # 附带关联的 PPT 项目信息（含页面缩略图），供订单详情页展示
+        if data.project_id:
+            project = Project.query.get(data.project_id)
+            if project:
+                result['project'] = project.to_dict(include_pages=True)
+        return jsonify({'code':200,'data':result})
     except Exception as e:
         logging.error(e)
         return jsonify({"code": 400, "message": str(e)})
@@ -148,6 +156,8 @@ def pay_order(id):
     order.payment_status='PAID'
     order.status = 'PAID'
     db.session.commit()
+    app = current_app._get_current_object()
+    task_manager.submit_task(f'order-ppt-{order.id}', generate_ppt_for_order, order.id, app)
     return jsonify({'code': 200, 'message': 'success'})
 @order_bp.route("/<string:id>/pay_status", methods=['GET'])
 @order_bp.route("/<string:id>/payment-status", methods=['GET'])

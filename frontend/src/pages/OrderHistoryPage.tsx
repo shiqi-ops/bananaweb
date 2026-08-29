@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, Loader2, Inbox, Calendar, DollarSign, FileText, ClipboardList, CreditCard } from 'lucide-react';
+import { ChevronLeft, Loader2, Inbox, Calendar, DollarSign, FileText, ClipboardList, CreditCard, Eye } from 'lucide-react';
 import { apiClient } from '@/api/client';
 import { Button, Card, useToast } from '@/components/shared';
 import { cn } from '@/utils';
@@ -22,6 +22,7 @@ interface OrderItem {
   deadline?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
+  project_id?: string | null;
 }
 
 const STATUS_MAP: Record<string, { label: string; className: string }> = {
@@ -140,7 +141,12 @@ export const OrderHistoryPage: React.FC = () => {
         ) : (
           <div className="space-y-4">
             {orders.map((o) => (
-              <Card key={o.id} className="p-5">
+              <Card
+                key={o.id}
+                hoverable
+                className="p-5"
+                onClick={() => navigate(`/orders/${o.id}`)}
+              >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-2">
@@ -182,15 +188,31 @@ export const OrderHistoryPage: React.FC = () => {
                       </p>
                     )}
                   </div>
-                  {o.payment_status === 'UNPAID' && (
+                  {o.payment_status === 'UNPAID' ? (
                     <Button
                       size="sm"
                       icon={<CreditCard size={16} />}
                       loading={payingId === o.id}
-                      onClick={() => handlePay(o.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handlePay(o.id);
+                      }}
                       className="flex-shrink-0"
                     >
                       去支付
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      icon={<Eye size={16} />}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/orders/${o.id}`);
+                      }}
+                      className="flex-shrink-0"
+                    >
+                      查看PPT
                     </Button>
                   )}
                 </div>

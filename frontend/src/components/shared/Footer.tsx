@@ -1,7 +1,7 @@
 import React from 'react';
 import { Github } from 'lucide-react';
 
-const GITHUB_REPO = 'Anionex/banana-slides';
+const GITHUB_REPO = 'shiqi-ops/bananaweb';
 const GITHUB_URL = `https://github.com/${GITHUB_REPO}`;
 
 export const Footer: React.FC = () => {

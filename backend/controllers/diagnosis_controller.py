@@ -6,7 +6,6 @@ import uuid
 
 import fitz
 from PIL import Image, ImageDraw, ImageFont
-from werkzeug.utils import secure_filename
 from flask import Blueprint, jsonify, request, send_file, current_app
 from werkzeug.utils import secure_filename
 

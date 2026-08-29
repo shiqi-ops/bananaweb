@@ -202,9 +202,15 @@ export const DiagnosisPage: React.FC = () => {
     }
   };
 
-  // 付费一对一指导
+  // 付费一对一指导：跳转到个人定制页，并把诊断结果作为需求描述带过去
   const handlePaidGuidance = () => {
-    show({ message: '即将跳转至定制服务页面', type: 'info' });
+    navigate('/custom', {
+      state: {
+        from: 'diagnosis',
+        summary: result?.summary ?? '',
+        score: result?.score ?? null,
+      },
+    });
   };
 
   // 重置状态
