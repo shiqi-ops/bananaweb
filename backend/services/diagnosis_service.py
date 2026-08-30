@@ -117,7 +117,6 @@ def _diagnosis_summary_prompt(all_page_results: list) -> str:
 def _pptx_to_pdf(pptx_path: str) -> str | None:
     """用 LibreOffice 将 PPTX 转成 PDF，返回 PDF 路径，失败返回 None"""
     import subprocess
-    import shutil
 
     soffice = r"C:\Program Files\LibreOffice\program\soffice.exe"
     if not os.path.exists(soffice):
@@ -291,11 +290,6 @@ def _generate_summary(ai_service, all_page_results: list) -> dict:
             "score": score,
             "summary": f"共诊断{len(all_page_results)}页，发现{total_issues}个优化点。"
         }
-
-
-# ---------------------------------------------------------------------------
-# 后台任务入口
-# ---------------------------------------------------------------------------
 
 def run_diagnosis_task(task_id: str, app):
     """
