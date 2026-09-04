@@ -180,6 +180,8 @@ export const Home: React.FC = () => {
   const { show, ToastContainer } = useToast();
   
   const [activeTab, setActiveTab] = useState<CreationType>('idea');
+  // 生成方式：传统模式（逐页 AI 渲染）/ 新模式（Dify 生成 + AI 诊断）
+  const [genMode, setGenMode] = useState<'traditional' | 'new'>('traditional');
   const [content, setContent] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState<File | null>(null);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
@@ -881,6 +883,46 @@ export const Home: React.FC = () => {
                 {feature.label}
               </span>
             ))}
+          </div>
+        </div>
+
+        {/* 生成方式选择：传统模式 / 新模式(Dify) */}
+        <div className="flex flex-col items-center gap-2 mb-6 md:mb-8">
+          <span className="text-[10px] md:text-xs font-medium uppercase tracking-widest text-gray-400 dark:text-foreground-tertiary">
+            选择生成方式
+          </span>
+          <div className="inline-flex flex-wrap justify-center p-1 rounded-2xl bg-white/70 dark:bg-background-elevated border border-gray-200/60 dark:border-border-primary shadow-sm dark:shadow-none gap-1">
+            <button
+              type="button"
+              onClick={() => setGenMode('traditional')}
+              className={`px-4 md:px-6 py-2 md:py-2.5 rounded-xl text-xs md:text-sm font-semibold transition-all ${
+                genMode === 'traditional'
+                  ? 'bg-gradient-to-r from-banana-500 to-banana-600 dark:from-banana dark:to-banana text-black shadow'
+                  : 'text-gray-600 dark:text-foreground-secondary hover:bg-banana-50 dark:hover:bg-background-hover'
+              }`}
+            >
+              传统模式
+              <span className={`block text-[10px] font-normal ${genMode === 'traditional' ? 'text-black/70' : 'opacity-60'}`}>
+                逐页 AI 渲染 · 可在线编辑
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setGenMode('new');
+                navigate('/new-mode');
+              }}
+              className={`px-4 md:px-6 py-2 md:py-2.5 rounded-xl text-xs md:text-sm font-semibold transition-all ${
+                genMode === 'new'
+                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow'
+                  : 'text-gray-600 dark:text-foreground-secondary hover:bg-purple-50 dark:hover:bg-background-hover'
+              }`}
+            >
+              新模式
+              <span className={`block text-[10px] font-normal ${genMode === 'new' ? 'text-white/80' : 'opacity-60'}`}>
+                AI 生成 · AI 诊断
+              </span>
+            </button>
           </div>
         </div>
 

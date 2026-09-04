@@ -763,6 +763,7 @@ def regenerate_renovation_page(project_id, page_id):
         data = request.get_json() or {}
         language = data.get('language', current_app.config.get('OUTPUT_LANGUAGE', 'zh'))
         keep_layout = data.get('keep_layout', False)
+        mode = data.get('mode', 'traditional')
 
         # Find the split PDF for this page
         project_dir = Path(current_app.config['UPLOAD_FOLDER']) / project_id
@@ -808,6 +809,21 @@ def regenerate_renovation_page(project_id, page_id):
 
         if not md_text.strip():
             return error_response('PARSE_ERROR', f"Failed to extract content from page {page.order_index + 1}", 400)
+
+        # 新模式：先把解析出的页面内容经 Dify 精修，再交给原流程重新生成
+        if mode == 'new' and md_text.strip():
+            from services.dify_service import is_dify_configured, enrich_with_dify
+            if is_dify_configured():
+                try:
+                    enriched = enrich_with_dify(
+                        instruction=md_text, page_count=1,
+                        style=project.template_style or '',
+                    )
+                    if enriched:
+                        md_text = enriched
+                        logger.info(f"新模式：已用 Dify 精修翻新页面 {page.order_index + 1} 的内容")
+                except Exception as e:
+                    logger.warning(f"新模式精修翻新页面内容失败: {e}")
 
         # Step 2: AI extract structured content
         logger.info(f"Regenerating renovation page {page.order_index + 1}: extracting content...")

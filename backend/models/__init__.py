@@ -29,6 +29,7 @@ from .mentor import Mentor
 from .mentor_slot import MentorSlot
 from .mentor_session import MentorSession
 from .diagnosis_task import DiagnosisTask
+from .new_mode_task import NewModeTask
 from .invite_record import InviteRecord
 from .reward import Reward
 
@@ -36,5 +37,5 @@ from .reward import Reward
 __all__ = ['db', 'Project', 'Page', 'Task',
            'UserTemplate', 'PageImageVersion', 'Material', 'ReferenceFile',
            'Settings','CustomOrder','Mentor','MentorSlot',
-           'MentorSession','DiagnosisTask','InviteRecord','Reward']
+           'MentorSession','DiagnosisTask','NewModeTask','InviteRecord','Reward']
 

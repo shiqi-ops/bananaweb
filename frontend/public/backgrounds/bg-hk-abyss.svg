@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#070a17"/>
+      <stop offset="0.5" stop-color="#0f1128"/>
+      <stop offset="1" stop-color="#161a35"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.52" r="0.6">
+      <stop offset="0" stop-color="#7b6fe0" stop-opacity="0.45"/>
+      <stop offset="0.6" stop-color="#7b6fe0" stop-opacity="0.12"/>
+      <stop offset="1" stop-color="#7b6fe0" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="fog" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="60"/>
+    </filter>
+    <filter id="soft" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="6"/>
+    </filter>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#sky)"/>
+  <rect width="1920" height="1080" fill="url(#glow)"/>
+  <!-- 迷雾 -->
+  <ellipse cx="480" cy="740" rx="520" ry="180" fill="#3a3f6e" opacity="0.35" filter="url(#fog)"/>
+  <ellipse cx="1500" cy="520" rx="520" ry="170" fill="#2c3057" opacity="0.3" filter="url(#fog)"/>
+  <!-- 远处尖塔剪影 -->
+  <path d="M1240 300 L1330 330 L1260 620 L1240 620 Z M1500 360 L1610 400 L1520 660 L1500 660 Z" fill="#0b0e20" opacity="0.85"/>
+  <path d="M1160 380 L1200 395 L1180 660 L1160 660 Z M1660 420 L1700 435 L1675 660 L1660 660 Z" fill="#0d1024" opacity="0.7"/>
+  <!-- 拱门剪影 -->
+  <path d="M620 1080 L620 760 A120 140 0 0 1 860 760 L860 1080 Z" fill="#080a18" opacity="0.72"/>
+  <path d="M980 1080 L980 720 A90 110 0 0 1 1160 720 L1160 1080 Z" fill="#060814" opacity="0.78"/>
+  <!-- 底部岩壁剪影 -->
+  <path d="M0 1080 L0 880 Q120 840 260 900 T520 860 T800 900 T1080 860 T1360 910 T1640 860 T1920 900 L1920 1080 Z" fill="#05060f" opacity="0.95"/>
+  <!-- 骑士小剪影 -->
+  <g fill="#04050d">
+    <circle cx="1240" cy="820" r="16"/>
+    <path d="M1234 806 L1246 806 L1242 790 L1238 790 Z"/>
+    <path d="M1240 836 L1240 900 M1220 880 L1240 880 L1260 880" stroke="#04050d" stroke-width="6" fill="none"/>
+  </g>
+  <!-- 漂浮光点 -->
+  <circle cx="760" cy="640" r="5" fill="#cdc0ff" opacity="0.5" filter="url(#soft)"/>
+  <circle cx="1450" cy="600" r="4" fill="#b7aaff" opacity="0.4" filter="url(#soft)"/>
+  <circle cx="1080" cy="520" r="3" fill="#e2d9ff" opacity="0.45" filter="url(#soft)"/>
+  <circle cx="320" cy="560" r="4" fill="#a89bff" opacity="0.35" filter="url(#soft)"/>
+  <circle cx="1680" cy="360" r="5" fill="#cdc0ff" opacity="0.35" filter="url(#soft)"/>
+  <circle cx="520" cy="300" r="3" fill="#e2d9ff" opacity="0.3" filter="url(#soft)"/>
+</svg>

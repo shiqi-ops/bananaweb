@@ -26,7 +26,7 @@ from controllers.material_controller import material_bp, material_global_bp
 from controllers.reference_file_controller import reference_file_bp
 from controllers.settings_controller import settings_bp
 from controllers import project_bp, page_bp, template_bp, user_template_bp, export_bp, file_bp, style_bp, order_bp, \
-    mentor_bp, diagnosis_bp, session_bp, share_bp,my_template_bp
+    mentor_bp, diagnosis_bp, session_bp, share_bp,my_template_bp, new_mode_bp
 
 
 # Enable SQLite WAL mode for all connections
@@ -116,6 +116,7 @@ def create_app():
     app.register_blueprint(order_bp)
     app.register_blueprint(mentor_bp)
     app.register_blueprint(diagnosis_bp)
+    app.register_blueprint(new_mode_bp)
     app.register_blueprint(session_bp)
     app.register_blueprint(share_bp)
     app.register_blueprint(my_template_bp)

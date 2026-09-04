@@ -174,7 +174,7 @@ import { SlideCard } from '@/components/preview/SlideCard';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useExportTasksStore, type ExportTaskType } from '@/store/useExportTasksStore';
 import { getImageUrl } from '@/api/client';
-import { getPageImageVersions, setCurrentImageVersion, updateProject, uploadTemplate, exportPPTX as apiExportPPTX, exportPDF as apiExportPDF, exportImages as apiExportImages, exportEditablePPTX as apiExportEditablePPTX, getSettings } from '@/api/endpoints';
+import { getPageImageVersions, setCurrentImageVersion, updateProject, uploadTemplate, exportPPTX as apiExportPPTX, exportPDF as apiExportPDF, exportImages as apiExportImages, exportEditablePPTX as apiExportEditablePPTX, getSettings, enrichWithDify } from '@/api/endpoints';
 import type { ImageVersion, DescriptionContent, ExportExtractorMethod, ExportInpaintMethod, Page } from '@/types';
 import { normalizeErrorMessage } from '@/utils';
 
@@ -211,6 +211,10 @@ export const SlidePreview: React.FC = () => {
   const [useTextStyleMode, setUseTextStyleMode] = useState(false);
   const [draftTemplateStyle, setDraftTemplateStyle] = useState('');
   const [editPrompt, setEditPrompt] = useState('');
+  // 单页编辑生成方式：传统（原样指令）/ 新模式（先经 Dify 精修指令再渲染）
+  const [editGenMode, setEditGenMode] = useState<'traditional' | 'new'>('traditional');
+  // 批量/单页生图方式：传统 / 新模式
+  const [genMode, setGenMode] = useState<'traditional' | 'new'>('traditional');
   // 大纲和描述编辑状态
   const [editOutlineTitle, setEditOutlineTitle] = useState('');
   const [editOutlinePoints, setEditOutlinePoints] = useState('');
@@ -492,7 +496,7 @@ export const SlidePreview: React.FC = () => {
 
       const executeGenerate = async () => {
         try {
-          await generateImages(pageIds);
+          await generateImages(pageIds, genMode);
         } catch (error: any) {
           console.error('批量生成错误:', error);
           console.error('错误响应:', error?.response?.data);
@@ -560,7 +564,7 @@ export const SlidePreview: React.FC = () => {
     await checkResolutionAndExecute(async () => {
       try {
         // 使用统一的 generateImages，传入单个页面 ID
-        await generateImages([page.id!]);
+        await generateImages([page.id!], genMode);
         show({ message: t('slidePreview.generationStarted'), type: 'success' });
       } catch (error: any) {
         // 提取后端返回的更具体错误信息
@@ -591,7 +595,7 @@ export const SlidePreview: React.FC = () => {
         });
       }
     });
-  }, [currentProject, selectedIndex, pageGeneratingTasks, generateImages, show, checkResolutionAndExecute]);
+  }, [currentProject, selectedIndex, pageGeneratingTasks, generateImages, show, checkResolutionAndExecute, genMode]);
 
   const handleSwitchVersion = async (versionId: string) => {
     if (!currentProject || !selectedPage?.id || !projectId) return;
@@ -740,10 +744,26 @@ export const SlidePreview: React.FC = () => {
     // 先保存大纲和描述的修改
     handleSaveOutlineAndDescription();
 
+    // 新模式：编辑指令先经 Dify 精修，再交给图片模型渲染
+    let effectivePrompt = editPrompt;
+    if (editGenMode === 'new') {
+      try {
+        const enrichResp = await enrichWithDify({ instruction: editPrompt });
+        if (enrichResp.data?.enriched && enrichResp.data.text) {
+          effectivePrompt = enrichResp.data.text;
+        } else {
+          show({ message: '未配置AI精修，已按原指令编辑（传统回退）', type: 'info' });
+        }
+      } catch (e: any) {
+        console.error('Dify 精修编辑指令失败，回退原指令:', e);
+        effectivePrompt = editPrompt;
+      }
+    }
+
     // 调用后端编辑接口
     await editPageImage(
       page.id,
-      editPrompt,
+      effectivePrompt,
       {
         useTemplate: selectedContextImages.useTemplate,
         descImageUrls: selectedContextImages.descImageUrls,
@@ -767,7 +787,7 @@ export const SlidePreview: React.FC = () => {
     }));
 
     setIsEditModalOpen(false);
-  }, [currentProject, selectedIndex, editPrompt, selectedContextImages, editPageImage, handleSaveOutlineAndDescription]);
+  }, [currentProject, selectedIndex, editPrompt, editGenMode, selectedContextImages, editPageImage, handleSaveOutlineAndDescription, show]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -1431,6 +1451,34 @@ export const SlidePreview: React.FC = () => {
         {/* 左侧：缩略图列表 */}
         <aside className="w-full md:w-80 bg-white dark:bg-background-secondary border-b md:border-b-0 md:border-r border-gray-200 dark:border-border-primary flex flex-col flex-shrink-0">
           <div className="p-3 md:p-4 border-b border-gray-200 dark:border-border-primary flex-shrink-0 space-y-2 md:space-y-3">
+            {/* 生图方式 */}
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-medium text-gray-400 dark:text-foreground-tertiary">生图方式</span>
+              <div className="inline-flex p-0.5 rounded-lg bg-gray-50 dark:bg-background-elevated border border-gray-200/60 dark:border-border-primary gap-0.5">
+                <button
+                  type="button"
+                  onClick={() => setGenMode('traditional')}
+                  className={`px-3 py-1 rounded-md text-[10px] font-semibold transition-all ${
+                    genMode === 'traditional'
+                      ? 'bg-gradient-to-r from-banana-500 to-banana-600 text-black shadow'
+                      : 'text-gray-600 dark:text-foreground-secondary hover:bg-banana-50 dark:hover:bg-background-hover'
+                  }`}
+                >
+                  传统
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGenMode('new')}
+                  className={`px-3 py-1 rounded-md text-[10px] font-semibold transition-all ${
+                    genMode === 'new'
+                      ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow'
+                      : 'text-gray-600 dark:text-foreground-secondary hover:bg-purple-50 dark:hover:bg-background-hover'
+                  }`}
+                >
+                  新模式
+                </button>
+              </div>
+            </div>
             <Button
               variant="primary"
               icon={<Sparkles size={16} className="md:w-[18px] md:h-[18px]" />}
@@ -2021,6 +2069,33 @@ export const SlidePreview: React.FC = () => {
           </div>
 
           {/* 编辑框 */}
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs font-medium text-gray-400 dark:text-foreground-tertiary">编辑方式</span>
+            <div className="inline-flex p-0.5 rounded-lg bg-gray-50 dark:bg-background-elevated border border-gray-200/60 dark:border-border-primary gap-0.5">
+              <button
+                type="button"
+                onClick={() => setEditGenMode('traditional')}
+                className={`px-3 py-1 rounded-md text-xs font-semibold transition-all ${
+                  editGenMode === 'traditional'
+                    ? 'bg-gradient-to-r from-banana-500 to-banana-600 text-black shadow'
+                    : 'text-gray-600 dark:text-foreground-secondary hover:bg-banana-50 dark:hover:bg-background-hover'
+                }`}
+              >
+                传统
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditGenMode('new')}
+                className={`px-3 py-1 rounded-md text-xs font-semibold transition-all ${
+                  editGenMode === 'new'
+                    ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow'
+                    : 'text-gray-600 dark:text-foreground-secondary hover:bg-purple-50 dark:hover:bg-background-hover'
+                }`}
+              >
+                新模式
+              </button>
+            </div>
+          </div>
           <Textarea
             label={t('preview.editPromptLabel')}
             placeholder={t('preview.editPromptPlaceholder')}

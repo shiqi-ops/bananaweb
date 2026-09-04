@@ -49,7 +49,7 @@ const materialGeneratorI18n = {
   }
 };
 import { Skeleton } from './Loading';
-import { generateMaterialImage, getTaskStatus } from '@/api/endpoints';
+import { generateMaterialImage, getTaskStatus, enrichWithDify } from '@/api/endpoints';
 import { getImageUrl } from '@/api/client';
 import type { Material } from '@/api/endpoints';
 import type { Task } from '@/types';
@@ -69,6 +69,8 @@ export const MaterialGeneratorModal: React.FC<MaterialGeneratorModalProps> = ({
   const { show } = useToast();
   const currentProject = useProjectStore((s) => s.currentProject);
   const [prompt, setPrompt] = useState('');
+  // 生成方式：传统（原样提示词）/ 新模式（先经 Dify 精修提示词）
+  const [genMode, setGenMode] = useState<'traditional' | 'new'>('traditional');
   const [aspectRatio, setAspectRatio] = useState('16:9');
 
   // Reset aspect ratio to project default when modal opens,
@@ -254,8 +256,27 @@ export const MaterialGeneratorModal: React.FC<MaterialGeneratorModalProps> = ({
 
     setIsGenerating(true);
     try {
+      // 新模式：先经 Dify 精修提示词，再交给原文生图模型渲染
+      let promptToUse = prompt.trim();
+      if (genMode === 'new') {
+        try {
+          const enrichResp = await enrichWithDify({
+            instruction: prompt.trim(),
+            style: aspectRatio ? `比例 ${aspectRatio}` : undefined,
+          });
+          if (enrichResp.data?.enriched && enrichResp.data.text) {
+            promptToUse = enrichResp.data.text;
+          } else {
+            show({ message: '未配置AI精修，已按原提示词生成（传统回退）', type: 'info' });
+          }
+        } catch (e: any) {
+          console.error('Dify 精修素材提示词失败，回退原提示词:', e);
+          promptToUse = prompt.trim();
+        }
+      }
+
       const targetProjectId = projectId || 'none';
-      const resp = await generateMaterialImage(targetProjectId, prompt.trim(), refImage as File, extraImages, aspectRatio);
+      const resp = await generateMaterialImage(targetProjectId, promptToUse, refImage as File, extraImages, aspectRatio);
       const taskId = resp.data?.task_id;
       
       if (taskId) {
@@ -318,6 +339,35 @@ export const MaterialGeneratorModal: React.FC<MaterialGeneratorModalProps> = ({
                 <div className="font-medium">{t('material.generatedPreview')}</div>
               </div>
             )}
+          </div>
+        </div>
+
+        {/* 生成方式 */}
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-xs font-medium text-gray-400 dark:text-foreground-tertiary">生成方式</span>
+          <div className="inline-flex p-0.5 rounded-lg bg-gray-50 dark:bg-background-elevated border border-gray-200/60 dark:border-border-primary gap-0.5">
+            <button
+              type="button"
+              onClick={() => setGenMode('traditional')}
+              className={`px-3 py-1 rounded-md text-xs font-semibold transition-all ${
+                genMode === 'traditional'
+                  ? 'bg-gradient-to-r from-banana-500 to-banana-600 text-black shadow'
+                  : 'text-gray-600 dark:text-foreground-secondary hover:bg-banana-50 dark:hover:bg-background-hover'
+              }`}
+            >
+              传统
+            </button>
+            <button
+              type="button"
+              onClick={() => setGenMode('new')}
+              className={`px-3 py-1 rounded-md text-xs font-semibold transition-all ${
+                genMode === 'new'
+                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow'
+                  : 'text-gray-600 dark:text-foreground-secondary hover:bg-purple-50 dark:hover:bg-background-hover'
+              }`}
+            >
+              新模式
+            </button>
           </div>
         </div>
 

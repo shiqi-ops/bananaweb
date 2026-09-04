@@ -32,6 +32,7 @@ def _render_page_as_image(file_path: str, file_type: str, page_num: int):
             logger.error(e)
             return None
 
+    #直接修改成安全名字，调用自身
     if file_type == 'pptx':
         base = os.path.splitext(file_path)[0]
         pdf_candidate = base + '.pdf'
@@ -40,8 +41,7 @@ def _render_page_as_image(file_path: str, file_type: str, page_num: int):
         return None
 
     return None
-
-
+#写注释
 def _draw_annotations(img: Image.Image, page_data: dict) -> Image.Image:
     draw = ImageDraw.Draw(img)
     img_w, img_h = img.size
@@ -52,6 +52,7 @@ def _draw_annotations(img: Image.Image, page_data: dict) -> Image.Image:
     ]
     font = None
     font_small = None
+    #选择字体
     for fp in font_paths:
         if os.path.exists(fp):
             try:
@@ -70,7 +71,7 @@ def _draw_annotations(img: Image.Image, page_data: dict) -> Image.Image:
         'medium': (220, 150, 30),
         'low':    (100, 100, 220),
     }
-
+    #画边界
     for issue in page_data.get('layout_issues', []):
         bbox = issue.get('bbox')
         if not bbox:
@@ -82,6 +83,7 @@ def _draw_annotations(img: Image.Image, page_data: dict) -> Image.Image:
         sev = issue.get('severity', 'medium')
         color = severity_colors.get(sev, (220, 30, 30))
 
+        #核心功能，画边界
         draw.rectangle([(x, y), (x + w, y + h)], outline=color, width=3)
 
         desc = issue.get('description', '')[:50]
@@ -94,6 +96,7 @@ def _draw_annotations(img: Image.Image, page_data: dict) -> Image.Image:
         draw.text((x + 3, label_y + 1), label, fill=(255, 255, 255), font=font_small)
 
     color_issues = page_data.get('color_issues', [])
+    #画颜色问题
     if color_issues:
         y_off = 10
         for issue in color_issues:
@@ -108,7 +111,7 @@ def _draw_annotations(img: Image.Image, page_data: dict) -> Image.Image:
             draw.rectangle([(10, y_off), (12 + tw, y_off + 18)], fill=(240, 140, 30))
             draw.text((12, y_off + 1), text, fill=(255, 255, 255), font=font_small)
             y_off += 22
-
+    #画逻辑问题
     logic_issues = page_data.get('logic_issues', [])
     if logic_issues:
         y_off = img_h - 22 * len(logic_issues) - 10
@@ -328,6 +331,34 @@ def apply(id):
         extra = body.get('extra_requirements', '')
         if extra:
             optimization_prompt += f"\n\n用户补充要求:\n{extra}"
+
+        # 新模式：把诊断问题交给 Dify → 逐页混合渲染，重生成精美 PPT（成品文件 + AI 诊断）
+        if body.get('mode') == 'new':
+            from models import NewModeTask
+            from services.new_mode_service import run_new_mode_task
+            from services.task_manager import task_manager
+
+            pages = result.get('pages') or []
+            page_count = max(1, min(len(pages), 60))
+            nm = NewModeTask(
+                user_id=task.user_id,
+                requirement=optimization_prompt,
+                title='AI 诊断优化 PPT',
+                page_count=page_count,
+                usage_scenario=None,
+                style_description=extra.strip() or None,
+                status='PENDING',
+                note='诊断优化（新模式），任务已创建...',
+            )
+            if NewModeTask.create_task(nm):
+                app_obj = current_app._get_current_object()
+                task_manager.submit_task(nm.id, run_new_mode_task, app_obj)
+                return jsonify({
+                    'code': 200,
+                    'message': '已用新模式生成优化 PPT',
+                    'data': {'mode': 'new', 'new_mode_task_id': nm.id, 'project_id': None},
+                })
+            return jsonify({'code': 500, 'message': '创建新模式优化任务失败'})
 
         new_project = Project(
             id=str(uuid.uuid4()),

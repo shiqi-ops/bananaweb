@@ -25,6 +25,23 @@ class DiagnosisFatalError(Exception):
     pass
 
 
+# 单页 AI 诊断超时（秒）：防止某页视觉调用挂死拖住整个诊断任务
+_PAGE_DIAG_TIMEOUT = 120
+
+
+def _call_with_timeout(fn, timeout: int):
+    """在子线程中执行 fn 并限制超时；超时抛出 TimeoutError。"""
+    import concurrent.futures
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
+        fut = ex.submit(fn)
+        try:
+            return fut.result(timeout=timeout)
+        except concurrent.futures.TimeoutError:
+            fut.cancel()
+            raise TimeoutError(f"诊断调用超时（>{timeout}s）")
+
+
 # ---------------------------------------------------------------------------
 # Prompt 模板
 # ---------------------------------------------------------------------------
@@ -114,31 +131,53 @@ def _diagnosis_summary_prompt(all_page_results: list) -> str:
 # 辅助函数
 # ---------------------------------------------------------------------------
 
+def _soffice_candidates() -> list:
+    """按优先级返回可用的 LibreOffice 可执行文件候选路径。
+
+    优先级:
+      1. 环境变量 SOFFICE_PATH（可在 .env 中配置）
+      2. 旧的 Windows 默认安装路径
+      3. PATH 中的 soffice / libreoffice / soffice.exe
+    """
+    import shutil
+
+    candidates = []
+    env_path = os.getenv('SOFFICE_PATH', '').strip()
+    if env_path:
+        candidates.append(env_path)
+    candidates.append(r"C:\Program Files\LibreOffice\program\soffice.exe")
+    for name in ('soffice', 'libreoffice', 'soffice.exe', 'libreoffice.exe'):
+        try:
+            found = shutil.which(name)
+        except Exception:
+            found = None
+        if found:
+            candidates.append(found)
+    return candidates
+
+
 def _pptx_to_pdf(pptx_path: str) -> str | None:
     """用 LibreOffice 将 PPTX 转成 PDF，返回 PDF 路径，失败返回 None"""
     import subprocess
 
-    soffice = r"C:\Program Files\LibreOffice\program\soffice.exe"
-    if not os.path.exists(soffice):
-        logger.warning("LibreOffice 未安装，无法转换 PPTX")
-        return None
-
     output_dir = os.path.dirname(pptx_path)
-    try:
-        result = subprocess.run(
-            [soffice, "--headless", "--convert-to", "pdf", "--outdir", output_dir, pptx_path],
-            capture_output=True, text=True, timeout=120,
-        )
-        if result.returncode != 0:
-            logger.warning(f"PPTX 转 PDF 失败: {result.stderr}")
-            return None
-    except Exception as e:
-        logger.warning(f"执行 LibreOffice 失败: {e}")
-        return None
+    for soffice in _soffice_candidates():
+        if not soffice or not os.path.exists(soffice):
+            continue
+        try:
+            result = subprocess.run(
+                [soffice, "--headless", "--convert-to", "pdf", "--outdir", output_dir, pptx_path],
+                capture_output=True, text=True, timeout=120,
+            )
+            if result.returncode == 0:
+                pdf_path = os.path.splitext(pptx_path)[0] + ".pdf"
+                if os.path.exists(pdf_path):
+                    return pdf_path
+            logger.warning(f"LibreOffice 转换失败 ({soffice}): rc={result.returncode} stderr={result.stderr[:300]}")
+        except Exception as e:
+            logger.warning(f"执行 LibreOffice 失败 ({soffice}): {e}")
 
-    pdf_path = os.path.splitext(pptx_path)[0] + ".pdf"
-    if os.path.exists(pdf_path):
-        return pdf_path
+    logger.warning("LibreOffice 未安装或不可用（可用环境变量 SOFFICE_PATH 指定），无法转换 PPTX → PDF")
     return None
 
 
@@ -237,9 +276,12 @@ def _diagnose_single_page(ai_service, img, page_num: int,
         os.close(fd)
         img.save(tmp_path, format="PNG")
 
-        # 调AI诊断
+        # 调AI诊断（带超时，防止单页视觉调用挂死拖住整个任务）
         prompt = _diagnosis_page_prompt(page_num, diagnosis_options)
-        response_text = ai_service._generate_text_from_image(prompt, tmp_path)
+        response_text = _call_with_timeout(
+            lambda: ai_service._generate_text_from_image(prompt, tmp_path),
+            _PAGE_DIAG_TIMEOUT,
+        )
 
         # 解析结果
         result = _parse_json(response_text)

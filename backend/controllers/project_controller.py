@@ -1011,6 +1011,34 @@ def generate_images(project_id):
         if not ref_image_path and not project.template_style:
             return bad_request("请先上传模板图片或添加风格描述。")
         
+        # 新模式：生成前先经 Dify 精修每页描述（内容/描述先经 Dify 加工，再交给原图片模型渲染）
+        if data.get('mode') == 'new':
+            from services.dify_service import is_dify_configured, enrich_with_dify
+            if is_dify_configured():
+                for p in pages:
+                    try:
+                        desc_content = p.get_description_content()
+                        if not desc_content:
+                            continue
+                        desc_text = desc_content.get('text', '')
+                        if not desc_text and desc_content.get('text_content'):
+                            tc = desc_content.get('text_content', [])
+                            desc_text = '\n'.join(tc) if isinstance(tc, list) else str(tc)
+                        if not desc_text.strip():
+                            continue
+                        enriched = enrich_with_dify(
+                            instruction=desc_text, page_count=1,
+                            style=project.template_style or '',
+                        )
+                        if enriched:
+                            new_desc = dict(desc_content)
+                            new_desc['text'] = enriched
+                            p.set_description_content(new_desc)
+                    except Exception as e:
+                        logger.warning(f"新模式精修第{p.order_index}页描述失败: {e}")
+                db.session.commit()
+                logger.info(f"新模式：已用 Dify 精修 {len(pages)} 页描述，进入图片渲染")
+
         # Reconstruct outline from pages with part structure
         outline = _reconstruct_outline_from_pages(pages)
         

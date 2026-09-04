@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#080a1a"/>
+      <stop offset="0.5" stop-color="#12142e"/>
+      <stop offset="1" stop-color="#1a1030"/>
+    </linearGradient>
+    <radialGradient id="moon" cx="0.5" cy="0.34" r="0.5">
+      <stop offset="0" stop-color="#d9ccff" stop-opacity="0.55"/>
+      <stop offset="0.55" stop-color="#9f8ef0" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#9f8ef0" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="fog" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="65"/>
+    </filter>
+    <filter id="soft" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="6"/>
+    </filter>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#sky)"/>
+  <rect width="1920" height="1080" fill="url(#moon)"/>
+  <!-- 巨大圆拱/符文门 -->
+  <g fill="none" stroke="#1c2040" stroke-width="26" opacity="0.85">
+    <path d="M600 1080 L600 400 A360 400 0 0 1 1320 400 L1320 1080"/>
+    <path d="M560 1080 L560 420 A400 440 0 0 1 1360 420 L1360 1080" stroke-width="8" opacity="0.5"/>
+  </g>
+  <!-- 裂痕/根须 -->
+  <g stroke="#0c0f24" stroke-width="10" fill="none" opacity="0.7">
+    <path d="M960 300 L960 1080"/>
+    <path d="M900 480 L860 1080 M1020 500 L1060 1080 M880 700 L820 1080 M1040 720 L1100 1080"/>
+  </g>
+  <!-- 顶层剑状尖塔 -->
+  <path d="M1500 120 L1530 200 L1516 260 L1500 260 L1484 260 L1470 200 Z M1730 160 L1754 230 L1742 285 L1730 285 L1718 285 L1706 230 Z M330 180 L356 250 L342 300 L330 300 L318 300 L304 250 Z" fill="#090c1c"/>
+  <!-- 迷雾 -->
+  <ellipse cx="700" cy="860" rx="560" ry="180" fill="#2f2f5c" opacity="0.35" filter="url(#fog)"/>
+  <ellipse cx="1360" cy="720" rx="520" ry="160" fill="#26264c" opacity="0.32" filter="url(#fog)"/>
+  <!-- 底部岩壁 -->
+  <path d="M0 1080 L0 900 Q180 850 360 920 T720 880 T1080 930 T1440 880 T1800 930 L1920 900 L1920 1080 Z" fill="#05060f" opacity="0.96"/>
+  <!-- 骑士剪影 -->
+  <g fill="#03040c">
+    <circle cx="960" cy="842" r="15"/>
+    <path d="M954 828 L966 828 L962 812 L958 812 Z"/>
+    <path d="M960 857 L960 920 M938 900 L960 900 L982 900" stroke="#03040c" stroke-width="6" fill="none"/>
+  </g>
+  <!-- 光点 -->
+  <circle cx="800" cy="620" r="4" fill="#e0d6ff" opacity="0.45" filter="url(#soft)"/>
+  <circle cx="1120" cy="560" r="5" fill="#c4b4ff" opacity="0.4" filter="url(#soft)"/>
+  <circle cx="700" cy="440" r="3" fill="#efe6ff" opacity="0.5" filter="url(#soft)"/>
+  <circle cx="1240" cy="420" r="3" fill="#d6c8ff" opacity="0.4" filter="url(#soft)"/>
+</svg>

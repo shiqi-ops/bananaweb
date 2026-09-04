@@ -116,8 +116,8 @@ interface ProjectState {
   generateFromDescription: () => Promise<void>;
   generateDescriptions: (detailLevel?: string) => Promise<void>;
   generatePageDescription: (pageId: string, detailLevel?: string) => Promise<void>;
-  regenerateRenovationPage: (pageId: string, keepLayout?: boolean) => Promise<void>;
-  generateImages: (pageIds?: string[]) => Promise<void>;
+  regenerateRenovationPage: (pageId: string, keepLayout?: boolean, mode?: string) => Promise<void>;
+  generateImages: (pageIds?: string[], mode?: string) => Promise<void>;
   editPageImage: (
     pageId: string,
     editPrompt: string,
@@ -937,7 +937,7 @@ const debouncedUpdatePage = debounce(
   },
 
   // 重新生成 PPT 翻新项目的单页（重新解析原 PDF 并提取内容）
-  regenerateRenovationPage: async (pageId: string, keepLayout: boolean = false) => {
+  regenerateRenovationPage: async (pageId: string, keepLayout: boolean = false, mode?: string) => {
     const { currentProject } = get();
     if (!currentProject) return;
 
@@ -957,7 +957,7 @@ const debouncedUpdatePage = debounce(
     set({ currentProject: { ...currentProject, pages: updatedPages } });
 
     try {
-      const response = await api.regenerateRenovationPage(currentProject.id, pageId, keepLayout);
+      const response = await api.regenerateRenovationPage(currentProject.id, pageId, keepLayout, undefined, mode);
 
       if (response.data) {
         const updatedPageData = response.data;
@@ -978,7 +978,7 @@ const debouncedUpdatePage = debounce(
   },
 
   // 生成图片（非阻塞，每个页面显示生成状态）
-  generateImages: async (pageIds?: string[]) => {
+  generateImages: async (pageIds?: string[], mode?: string) => {
     const { currentProject, pageGeneratingTasks } = get();
     if (!currentProject) return;
 
@@ -1001,7 +1001,7 @@ const debouncedUpdatePage = debounce(
     
     try {
       // 调用批量生成 API
-      const response = await api.generateImages(currentProject.id, undefined, pageIds);
+      const response = await api.generateImages(currentProject.id, undefined, pageIds, mode);
       const taskId = response.data?.task_id;
       
       if (taskId) {

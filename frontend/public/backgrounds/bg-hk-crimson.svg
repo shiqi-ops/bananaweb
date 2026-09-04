@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#120a0a"/>
+      <stop offset="0.5" stop-color="#1c0f14"/>
+      <stop offset="1" stop-color="#241019"/>
+    </linearGradient>
+    <radialGradient id="ember" cx="0.5" cy="0.5" r="0.62">
+      <stop offset="0" stop-color="#ff8a5c" stop-opacity="0.5"/>
+      <stop offset="0.5" stop-color="#c24a3a" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#c24a3a" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="fog" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="60"/>
+    </filter>
+    <filter id="soft" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="6"/>
+    </filter>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#sky)"/>
+  <rect width="1920" height="1080" fill="url(#ember)"/>
+  <!-- 燃烧面具/阴影 -->
+  <ellipse cx="960" cy="470" rx="220" ry="260" fill="#0b0509" opacity="0.92"/>
+  <path d="M960 210 a230 250 0 0 1 180 420 l-360 0 a230 250 0 0 1 180 -420 Z" fill="none" stroke="#ff6a4d" stroke-width="8" opacity="0.5"/>
+  <ellipse cx="880" cy="430" rx="26" ry="40" fill="#ff7a4f" opacity="0.5" filter="url(#soft)"/>
+  <ellipse cx="1040" cy="430" rx="26" ry="40" fill="#ff7a4f" opacity="0.5" filter="url(#soft)"/>
+  <line x1="960" y1="470" x2="960" y2="560" stroke="#ff6a4d" stroke-width="6" opacity="0.4"/>
+  <!-- 两侧尖塔 -->
+  <path d="M420 340 L450 250 L470 340 L470 1080 L450 1080 L420 1080 Z" fill="#0a060c" opacity="0.9"/>
+  <path d="M1500 340 L1530 250 L1550 340 L1550 1080 L1530 1080 L1500 1080 Z" fill="#0a060c" opacity="0.9"/>
+  <!-- 迷雾 -->
+  <ellipse cx="760" cy="860" rx="560" ry="190" fill="#3a1620" opacity="0.4" filter="url(#fog)"/>
+  <ellipse cx="1200" cy="700" rx="520" ry="170" fill="#2c1018" opacity="0.36" filter="url(#fog)"/>
+  <!-- 底部岩壁 -->
+  <path d="M0 1080 L0 900 Q160 850 340 910 T700 870 T1060 920 T1420 870 T1780 920 L1920 900 L1920 1080 Z" fill="#080409" opacity="0.96"/>
+  <!-- 余烬光点 -->
+  <circle cx="640" cy="560" r="4" fill="#ffb08a" opacity="0.6" filter="url(#soft)"/>
+  <circle cx="1290" cy="500" r="5" fill="#ff9c76" opacity="0.5" filter="url(#soft)"/>
+  <circle cx="900" cy="340" r="3" fill="#ffd0b0" opacity="0.55" filter="url(#soft)"/>
+  <circle cx="1040" cy="650" r="4" fill="#ff8a64" opacity="0.45" filter="url(#soft)"/>
+  <circle cx="500" cy="440" r="3" fill="#ffb08a" opacity="0.4" filter="url(#soft)"/>
+  <circle cx="1420" cy="620" r="4" fill="#ff9c76" opacity="0.4" filter="url(#soft)"/>
+</svg>

@@ -88,10 +88,11 @@ def reconstruct_outline_from_pages(pages: list) -> list:
     return outline
 
 
-def generate_pages_from_description(project_id: str, description_text: str, language: str = 'zh') -> list:
+def generate_pages_from_description(project_id: str, description_text: str, language: str = 'zh', page_count: int = None) -> list:
     """
     Parse description into an outline + per-page descriptions and create Page records.
 
+    page_count: 可选，限制最终生成的页数（订单等场景按用户要求截断）。
     Returns the list of created Page objects.
     """
     project = Project.query.get(project_id)
@@ -116,6 +117,11 @@ def generate_pages_from_description(project_id: str, description_text: str, lang
         min_count = min(len(pages_data), len(page_descriptions))
         pages_data = pages_data[:min_count]
         page_descriptions = page_descriptions[:min_count]
+
+    # 按用户要求的页数截断（订单等场景）
+    if page_count and page_count > 0:
+        pages_data = pages_data[:page_count]
+        page_descriptions = page_descriptions[:page_count]
 
     # Delete existing pages (using ORM session to trigger cascades)
     for old_page in Page.query.filter_by(project_id=project_id).all():

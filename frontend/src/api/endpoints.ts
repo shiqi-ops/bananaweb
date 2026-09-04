@@ -344,12 +344,13 @@ export const regenerateRenovationPage = async (
   projectId: string,
   pageId: string,
   keepLayout: boolean = false,
-  language?: OutputLanguage
+  language?: OutputLanguage,
+  mode?: string
 ): Promise<ApiResponse> => {
   const lang = language || await getStoredOutputLanguage();
   const response = await apiClient.post<ApiResponse>(
     `/api/projects/${projectId}/pages/${pageId}/regenerate-renovation`,
-    { keep_layout: keepLayout, language: lang }
+    { keep_layout: keepLayout, language: lang, mode: mode || undefined }
   );
   return response.data;
 };
@@ -411,12 +412,13 @@ export const refineDescriptions = async (
  * @param projectId 项目ID
  * @param language 输出语言（可选，默认从 sessionStorage 获取）
  * @param pageIds 可选的页面ID列表，如果不提供则生成所有页面
+ * @param mode 生成方式：'new' 表示先经 Dify 精修描述再渲染，否则传统
  */
-export const generateImages = async (projectId: string, language?: OutputLanguage, pageIds?: string[]): Promise<ApiResponse> => {
+export const generateImages = async (projectId: string, language?: OutputLanguage, pageIds?: string[], mode?: string): Promise<ApiResponse> => {
   const lang = language || await getStoredOutputLanguage();
   const response = await apiClient.post<ApiResponse>(
     `/api/projects/${projectId}/generate/images`,
-    { language: lang, page_ids: pageIds }
+    { language: lang, page_ids: pageIds, mode: mode || undefined }
   );
   return response.data;
 };
@@ -1223,6 +1225,105 @@ export const extractStyleFromImage = async (
   const response = await apiClient.post<ApiResponse<{ style_description: string }>>(
     '/api/extract-style',
     formData
+  );
+  return response.data;
+};
+
+// ===== 新模式（Dify 生成 + AI 诊断）=====
+
+export interface NewModeJob {
+  id: string;
+  user_id?: string | null;
+  requirement: string;
+  title?: string | null;
+  page_count: number;
+  usage_scenario?: string | null;
+  style_description?: string | null;
+  engine: string;
+  status: 'PENDING' | 'GENERATING' | 'DIAGNOSING' | 'COMPLETED' | 'FAILED';
+  note?: string | null;
+  file_name?: string | null;
+  diagnosis_task_id?: string | null;
+  score?: number | null;
+  summary?: string | null;
+  result?: any | null;
+  error_message?: string | null;
+  created_at?: string | null;
+  completed_at?: string | null;
+}
+
+/**
+ * 创建新模式任务（需求 → Dify 生成成品 PPTX → AI 诊断）
+ */
+export const createNewModeJob = async (payload: {
+  requirement: string;
+  title?: string;
+  page_count?: number;
+  usage_scenario?: string;
+  style_description?: string;
+  user_id?: string;
+}): Promise<ApiResponse<{ task_id: string; status: string }>> => {
+  const response = await apiClient.post<ApiResponse<{ task_id: string; status: string }>>(
+    '/api/new-mode',
+    payload
+  );
+  return response.data;
+};
+
+/**
+ * 查询新模式任务详情 / 进度
+ */
+export const getNewModeJob = async (taskId: string): Promise<ApiResponse<NewModeJob>> => {
+  const response = await apiClient.get<ApiResponse<NewModeJob>>(`/api/new-mode/${taskId}`);
+  return response.data;
+};
+
+/**
+ * 最近的新模式任务列表
+ */
+export const listNewModeJobs = async (user_id?: string): Promise<ApiResponse<{ items: NewModeJob[] }>> => {
+  const params = new URLSearchParams();
+  if (user_id) params.append('user_id', user_id);
+  const qs = params.toString();
+  const response = await apiClient.get<ApiResponse<{ items: NewModeJob[] }>>(
+    `/api/new-mode${qs ? `?${qs}` : ''}`
+  );
+  return response.data;
+};
+
+/**
+ * 下载新模式生成的 PPTX 文件
+ */
+export const downloadNewModeFile = async (taskId: string, filename?: string): Promise<boolean> => {
+  const response = await apiClient.get<Blob>(`/api/new-mode/${taskId}/download`, {
+    responseType: 'blob',
+  });
+  const href = URL.createObjectURL(response.data);
+  const link = Object.assign(document.createElement('a'), {
+    href,
+    download: filename || 'AI生成的演示文稿.pptx',
+  });
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(href);
+  return true;
+};
+
+/**
+ * 通用：把一条指令/描述先经 Dify 加工（素材生成、单页生图的"新模式"用）。
+ * 未配置 Dify 时返回 enriched=false，调用方应回退原文。
+ */
+export const enrichWithDify = async (payload: {
+  instruction: string;
+  title?: string;
+  style?: string;
+  usage_scenario?: string;
+  page_count?: number;
+}): Promise<ApiResponse<{ text: string; enriched: boolean }>> => {
+  const response = await apiClient.post<ApiResponse<{ text: string; enriched: boolean }>>(
+    '/api/new-mode/enrich',
+    payload
   );
   return response.data;
 };

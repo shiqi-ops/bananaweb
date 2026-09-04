@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f8fafc"/>
+      <stop offset="0.5" stop-color="#f1f5f9"/>
+      <stop offset="1" stop-color="#e2e8f0"/>
+    </linearGradient>
+    <filter id="b" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="120"/>
+    </filter>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#g)"/>
+  <circle cx="1480" cy="200" r="340" fill="#94a3b8" opacity="0.14" filter="url(#b)"/>
+  <circle cx="280" cy="840" r="380" fill="#cbd5e1" opacity="0.20" filter="url(#b)"/>
+  <circle cx="1080" cy="500" r="280" fill="#e2e8f0" opacity="0.30" filter="url(#b)"/>
+</svg>

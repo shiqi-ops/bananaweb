@@ -65,8 +65,8 @@ def generate_ppt_for_order(task_id, order_id, app):
 
             language = current_app.config.get('OUTPUT_LANGUAGE', 'zh')
 
-            # 1) 解析需求 -> 大纲 + 每页描述
-            generate_pages_from_description(project.id, order.requirement, language=language)
+            # 1) 解析需求 -> 大纲 + 每页描述（按订单要求的页数截断）
+            generate_pages_from_description(project.id, order.requirement, language=language, page_count=order.page_count)
 
             # 2) 提交图片生成（后台任务）
             submit_image_generation(project.id, app=app)

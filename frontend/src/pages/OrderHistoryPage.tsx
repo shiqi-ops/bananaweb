@@ -25,14 +25,6 @@ interface OrderItem {
   project_id?: string | null;
 }
 
-const STATUS_MAP: Record<string, { label: string; className: string }> = {
-  PENDING: { label: '待处理', className: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300' },
-  PAID: { label: '已支付', className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' },
-  IN_PROGRESS: { label: '制作中', className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' },
-  COMPLETED: { label: '已完成', className: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' },
-  CANCELLED: { label: '已取消', className: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300' },
-};
-
 const PAYMENT_MAP: Record<string, { label: string; className: string }> = {
   UNPAID: { label: '未支付', className: 'text-red-500' },
   PAID: { label: '已支付', className: 'text-green-600 dark:text-green-400' },
@@ -150,14 +142,6 @@ export const OrderHistoryPage: React.FC = () => {
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-2">
-                      <span
-                        className={cn(
-                          'px-2 py-0.5 rounded-full text-xs font-medium',
-                          (STATUS_MAP[o.status] || STATUS_MAP.PENDING).className
-                        )}
-                      >
-                        {(STATUS_MAP[o.status] || STATUS_MAP.PENDING).label}
-                      </span>
                       <span
                         className={cn(
                           'text-xs font-medium',

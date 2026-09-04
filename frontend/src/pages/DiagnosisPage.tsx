@@ -49,6 +49,8 @@ export const DiagnosisPage: React.FC = () => {
   const [result, setResult] = useState<DiagnosisResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [isApplying, setIsApplying] = useState(false);
+  // 应用优化的重新生成方式：传统（原引擎）/ 新模式（Dify 内容 + 混合渲染）
+  const [applyMode, setApplyMode] = useState<'traditional' | 'new'>('traditional');
 
   // 分页状态
   const [currentPage, setCurrentPage] = useState(1);
@@ -184,11 +186,17 @@ export const DiagnosisPage: React.FC = () => {
     if (!taskId) return;
     setIsApplying(true);
     try {
-      const response = await apiClient.post<{ data?: { project_id: string; task_id: string } }>(
+      const response = await apiClient.post<{ data?: { project_id?: string; task_id?: string; mode?: string; new_mode_task_id?: string } }>(
         `/api/diagnosis/${taskId}/apply`,
-        {}
+        { mode: applyMode }
       );
-      const projectId = response.data?.data?.project_id;
+      const res = response.data?.data;
+      if (res?.mode === 'new' && res.new_mode_task_id) {
+        show({ message: '已提交新模式优化任务，正在生成...', type: 'success' });
+        navigate(`/new-mode?job=${res.new_mode_task_id}`);
+        return;
+      }
+      const projectId = res?.project_id;
       if (!projectId) {
         throw new Error('创建优化项目失败，未返回项目ID');
       }
@@ -472,6 +480,35 @@ export const DiagnosisPage: React.FC = () => {
             )}
           </div>
         )}
+
+        {/* 重新生成方式选择 */}
+        <div className="pt-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+          <span className="text-xs font-medium text-gray-400 dark:text-foreground-tertiary">重新生成方式</span>
+          <div className="inline-flex p-1 rounded-xl bg-gray-50 dark:bg-background-elevated border border-gray-200/60 dark:border-border-primary gap-1">
+            <button
+              type="button"
+              onClick={() => setApplyMode('traditional')}
+              className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                applyMode === 'traditional'
+                  ? 'bg-gradient-to-r from-banana-500 to-banana-600 text-black shadow'
+                  : 'text-gray-600 dark:text-foreground-secondary hover:bg-banana-50 dark:hover:bg-background-hover'
+              }`}
+            >
+              传统
+            </button>
+            <button
+              type="button"
+              onClick={() => setApplyMode('new')}
+              className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                applyMode === 'new'
+                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow'
+                  : 'text-gray-600 dark:text-foreground-secondary hover:bg-purple-50 dark:hover:bg-background-hover'
+              }`}
+            >
+              新模式
+            </button>
+          </div>
+        </div>
 
         {/* 操作按钮 */}
         <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-gray-200 dark:border-border-primary">

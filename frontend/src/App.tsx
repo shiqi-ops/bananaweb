@@ -7,6 +7,7 @@ import { OutlineEditor } from './pages/OutlineEditor';
 import { DetailEditor } from './pages/DetailEditor';
 import { SlidePreview } from './pages/SlidePreview';
 import { DiagnosisPage } from './pages/DiagnosisPage';
+import { NewModePage } from './pages/NewModePage';
 import { CustomOrderPage } from './pages/CustomOrderPage';
 import { OrderHistoryPage } from './pages/OrderHistoryPage';
 import { OrderDetailPage } from './pages/OrderDetailPage';
@@ -47,6 +48,7 @@ function App() {
           <Route path="/project/:projectId/detail" element={<DetailEditor />} />
           <Route path="/project/:projectId/preview" element={<SlidePreview />} />
           <Route path="/diagnosis" element={<DiagnosisPage />} />
+          <Route path="/new-mode" element={<NewModePage />} />
           <Route path="/custom" element={<CustomOrderPage />} />
           <Route path="/orders" element={<OrderHistoryPage />} />
           <Route path="/orders/:orderId" element={<OrderDetailPage />} />

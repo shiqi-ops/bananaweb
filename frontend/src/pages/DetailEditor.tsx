@@ -199,6 +199,8 @@ export const DetailEditor: React.FC = () => {
   const [renovationProgress, setRenovationProgress] = useState<{ total: number; completed: number } | null>(null);
   const [detailLevel, setDetailLevel] = useState<string>('default');
   const [generationMode, setGenerationMode] = useState<'streaming' | 'parallel'>('streaming');
+  // 翻新重渲染的生成方式：传统 / 新模式（先经 Dify 精修内容再重新生成）
+  const [renovGenMode, setRenovGenMode] = useState<'traditional' | 'new'>('traditional');
   const [extraFieldNames, setExtraFieldNames] = useState<string[]>(['视觉元素', '视觉焦点', '排版布局', '演讲者备注']);
   const [imagePromptFields, setImagePromptFields] = useState<string[]>(['视觉元素', '视觉焦点', '排版布局']);
   // 可选字段池（localStorage 持久化，包含所有已知字段名）
@@ -421,6 +423,8 @@ export const DetailEditor: React.FC = () => {
     
     const executeGenerate = async () => {
       await generateDescriptions(detailLevel);
+      // 生成后立即同步，确保解析的描述无需手动保存就显示出来
+      await syncProject(projectId);
     };
     
     if (hasDescriptions) {
@@ -446,10 +450,12 @@ export const DetailEditor: React.FC = () => {
     const executeRegenerate = async () => {
       try {
         if (isRenovation) {
-          await regenerateRenovationPage(pageId);
+          await regenerateRenovationPage(pageId, false, renovGenMode);
         } else {
           await generatePageDescription(pageId, detailLevel);
         }
+        // 生成后立即同步，避免"保存后才显示"
+        await syncProject(projectId);
         show({ message: t('detail.messages.generateSuccess'), type: 'success' });
       } catch (error: any) {
         show({
@@ -669,6 +675,31 @@ export const DetailEditor: React.FC = () => {
         ) : (
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-3">
           <div className="flex items-center gap-2 sm:gap-3 flex-1">
+            {/* 翻新重新生成方式 */}
+            <div className="inline-flex p-0.5 rounded-lg bg-gray-50 dark:bg-background-elevated border border-gray-200/60 dark:border-border-primary gap-0.5">
+              <button
+                type="button"
+                onClick={() => setRenovGenMode('traditional')}
+                className={`px-3 py-1 rounded-md text-[10px] font-semibold transition-all ${
+                  renovGenMode === 'traditional'
+                    ? 'bg-gradient-to-r from-banana-500 to-banana-600 text-black shadow'
+                    : 'text-gray-600 dark:text-foreground-secondary hover:bg-banana-50 dark:hover:bg-background-hover'
+                }`}
+              >
+                传统
+              </button>
+              <button
+                type="button"
+                onClick={() => setRenovGenMode('new')}
+                className={`px-3 py-1 rounded-md text-[10px] font-semibold transition-all ${
+                  renovGenMode === 'new'
+                    ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow'
+                    : 'text-gray-600 dark:text-foreground-secondary hover:bg-purple-50 dark:hover:bg-background-hover'
+                }`}
+              >
+                新
+              </button>
+            </div>
             <Button
               variant="primary"
               icon={<Sparkles size={16} className="md:w-[18px] md:h-[18px]" />}
