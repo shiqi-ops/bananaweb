@@ -58,3 +58,11 @@ _local_backup/
 !CLA.md 
 !CONTRIBUTING.md
 .venv
+
+# 日志（可能含 API key 等敏感信息，禁止提交）
+*.log
+
+# 打包产物
+*.zip
+*.tar
+*.tgz

@@ -53,6 +53,21 @@
 
 但是，nano banana🍌模型的出现让一切有了转机。我尝试使用🍌pro进行ppt页面生成，发现生成的结果无论是质量、美感还是一致性，都做的非常好，且几乎能精确渲染prompt要求的所有文字+遵循参考图的风格。那为什么不基于🍌pro，做一个原生的"Vibe PPT"应用呢？
 
+## 🍌 本仓库（fork）新增功能
+
+在原版 banana-slides 基础上，本仓库额外加入了面向交付 / 商业化的能力：
+
+- **双模式 PPT 生成**
+  - **传统模式**：原引擎逐页 AI 渲染 + 网页在线编辑（框选局部重绘、Vibe 口头修改）
+  - **新模式**：AI 生成内容 → 逐页 AI 渲染成图 → 组装成品 PPTX → AI 诊断评分 → 下载（一句话直达成品文件）
+- **AI PPT 诊断**：上传 PPT/PDF → 逐页诊断（排版 / 配色 / 逻辑 / 文字）→ 评分 + 标注预览 + 一键「应用优化」重新生成
+- **私人定制订单**：下单 → 支付 → 后台自动生成 PPT（按页数计费、可关联导师）
+- **导师 / 邀请 / 分享 / 奖励**等商业化模块
+- **Dify 集成（可选）**：新模式的内容可由自建 Dify 工作流提供（未配置 Dify 时自动降级为占位生成）
+- **多图片模型可切换**：支持 Gemini / 豆包 Seedream / 通义 等（见 `.env.example` 示例）
+
+> 后端主要新增：`services/new_mode_service.py`、`services/dify_service.py`、`services/diagnosis_service.py`、`services/order_service.py`、`controllers/new_mode_controller.py`、`controllers/diagnosis_controller.py`、`controllers/order_controller.py` 等。
+
 ## 👨‍💻 适用场景
 
 
@@ -181,6 +196,37 @@
 | 🏢商业版功能 | 用户系统 |
 
 ## 📦 使用方法
+
+### ⚡ 快速开始（克隆 → 配置 → 运行）
+
+```bash
+git clone https://github.com/shiqi-ops/bananaweb.git
+cd bananaweb
+cp .env.example .env    # 然后打开 .env 把 your-xxx-here 换成自己的 key
+```
+
+**后端**
+```bash
+cd backend
+uv sync
+uv run alembic upgrade head   # 首次建表（含 new_mode_task 等）
+uv run python app.py          # 后端 :5000
+```
+
+**前端**（另开一个终端）
+```bash
+cd frontend
+npm install
+npm run dev                    # 前端 :3000
+```
+打开 http://localhost:3000 即可。
+
+**`.env` 必填项**（详见 `.env.example` 里的"常用组合示例"）：
+- 文本模型：`AI_PROVIDER_FORMAT=openai` + `OPENAI_API_KEY` / `OPENAI_API_BASE`（如 DeepSeek）
+- 图片模型：`IMAGE_MODEL` + `IMAGE_MODEL_SOURCE` + 对应 key（Gemini 或豆包）
+- 图片识别：`IMAGE_CAPTION_MODEL_SOURCE` / `IMAGE_CAPTION_MODEL` + 对应 key
+- （可选）`DIFY_API_BASE` / `DIFY_API_KEY`（新模式内容；不配则自动降级为占位生成）
+- （可选）`MINERU_TOKEN`、`BAIDU_API_KEY`（文件解析 / 可编辑导出）
 
 ### （新）使用应用模板一键部署
 这是最简单的方式，无需安装docker或下载项目，创建后可直接进入应用
