@@ -66,7 +66,7 @@ export const OrderHistoryPage: React.FC = () => {
 
   useEffect(() => {
     fetchOrders();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   const handlePay = async (id: string) => {

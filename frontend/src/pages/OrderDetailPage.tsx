@@ -113,7 +113,7 @@ export const OrderDetailPage: React.FC = () => {
   // 首次加载
   useEffect(() => {
     fetchOrder();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   // 组件卸载时停止轮询
