@@ -17,6 +17,7 @@ diagnosis_bp = Blueprint('diagnosis_bp', __name__, url_prefix='/api/diagnosis')
 logger = logging.getLogger(__name__)
 
 def _render_page_as_image(file_path: str, file_type: str, page_num: int):
+    #取page_num页图像返回
     if file_type == 'pdf':
         try:
             doc = fitz.open(file_path)
@@ -46,10 +47,12 @@ def _draw_annotations(img: Image.Image, page_data: dict) -> Image.Image:
     draw = ImageDraw.Draw(img)
     img_w, img_h = img.size
 
+    #选择文字路径
     font_paths = [
         os.path.join(os.path.dirname(__file__), '..', 'fonts', 'NotoSansSC-Regular.ttf'),
         os.path.join(os.path.dirname(__file__), '..', 'fonts', 'NotoSansSC-Bold.ttf'),
     ]
+    #选择文字大小
     font = None
     font_small = None
     #选择字体
@@ -65,7 +68,7 @@ def _draw_annotations(img: Image.Image, page_data: dict) -> Image.Image:
     if font is None:
         font = ImageFont.load_default()
         font_small = ImageFont.load_default()
-
+    #严重程度 ->颜色
     severity_colors = {
         'high':   (220, 30, 30),
         'medium': (220, 150, 30),
@@ -80,16 +83,19 @@ def _draw_annotations(img: Image.Image, page_data: dict) -> Image.Image:
         y = int(bbox.get('y', 0))
         w = int(bbox.get('width', 0))
         h = int(bbox.get('height', 0))
+        #严重度
         sev = issue.get('severity', 'medium')
+        #颜色
         color = severity_colors.get(sev, (220, 30, 30))
 
         #核心功能，画边界
         draw.rectangle([(x, y), (x + w, y + h)], outline=color, width=3)
 
+        #描述
         desc = issue.get('description', '')[:50]
         label = f"[排版·{sev}] {desc}"
         label_y = max(0, y - 20)
-
+        #画标签的问题
         bbox_text = draw.textbbox((x, label_y), label, font=font_small)
         tw = bbox_text[2] - bbox_text[0]
         draw.rectangle([(x, label_y), (x + tw + 6, label_y + 18)], fill=color)
@@ -100,8 +106,11 @@ def _draw_annotations(img: Image.Image, page_data: dict) -> Image.Image:
     if color_issues:
         y_off = 10
         for issue in color_issues:
+            #严重度
             sev = issue.get('severity', 'medium')
+            #描述
             desc = issue.get('description', '')[:60]
+            #建议
             suggestion = issue.get('suggestion', '')[:40]
             text = f"[配色·{sev}] {desc}"
             if suggestion:
@@ -124,7 +133,7 @@ def _draw_annotations(img: Image.Image, page_data: dict) -> Image.Image:
             draw.rectangle([(10, y_off), (12 + tw, y_off + 18)], fill=(80, 80, 210))
             draw.text((12, y_off + 1), text, fill=(255, 255, 255), font=font_small)
             y_off += 22
-
+    #文章建议
     text_issues = page_data.get('text_suggestions', [])
     if text_issues:
         y_off = img_h - 22 * len(text_issues) - 10
@@ -258,19 +267,19 @@ def preview(id, page_num):
     try:
         if not id:
             return jsonify({"code": 400, "message": "No id provided"})
-
+        #诊断任务是否存在
         task = DiagnosisTask.get_by_id(id)
         if task is None:
             return jsonify({'code': 404, 'message': '诊断任务不存在'})
         if task.status != 'COMPLETED':
             return jsonify({'code': 400, 'message': f'诊断尚未完成，当前状态: {task.status}'})
-
+        #检测诊断结果
         try:
             result = json.loads(task.result) if task.result else {}
         except (json.JSONDecodeError, TypeError):
             return jsonify({'code': 500, 'message': '诊断结果 JSON 格式错误'})
 
-
+        #遍历，找到对应的那一页
         page_data = None
         for p in result.get('pages', []):
             if p.get('page_number') == page_num:
@@ -278,8 +287,9 @@ def preview(id, page_num):
                 break
         if page_data is None:
             return jsonify({'code': 404, 'message': f'第 {page_num} 页没有诊断数据'})
-
+        #将这一页转化为图片
         img = _render_page_as_image(task.file_path, task.file_type, page_num)
+        #如果img为空，则将渲染为无法解析图片
         if img is None:
             img = Image.new('RGB', (1200, 800), color=(248, 248, 248))
             draw = ImageDraw.Draw(img)
@@ -292,7 +302,7 @@ def preview(id, page_num):
             draw.text((350, 370),
                       f"⚠ 无法渲染 {task.file_type.upper()} 文件第 {page_num} 页（仅展示标注信息）",
                       fill=(160, 160, 160), font=placeholder_font)
-
+        #画注释
         img = _draw_annotations(img, page_data)
 
         buf = io.BytesIO()
@@ -310,13 +320,13 @@ def apply(id):
     try:
         if not id:
             return jsonify({"code": 400, "message": "No id provided"})
-
+        #找任务
         task = DiagnosisTask.get_by_id(id)
         if task is None:
             return jsonify({'code': 404, 'message': '诊断任务不存在'})
         if task.status != 'COMPLETED':
             return jsonify({'code': 400, 'message': f'诊断尚未完成，当前状态: {task.status}'})
-
+        #解析诊断结果
         try:
             result = json.loads(task.result) if task.result else {}
         except (json.JSONDecodeError, TypeError):
@@ -324,7 +334,7 @@ def apply(id):
 
         if not result.get('pages'):
             return jsonify({'code': 400, 'message': '诊断结果中无页面数据，无法生成优化方案'})
-
+        #构建提示词
         optimization_prompt = _build_optimization_prompt(result)
 
         body = request.get_json() or {}
@@ -337,7 +347,7 @@ def apply(id):
             from models import NewModeTask
             from services.new_mode_service import run_new_mode_task
             from services.task_manager import task_manager
-
+            #模式极限处理页数为60
             pages = result.get('pages') or []
             page_count = max(1, min(len(pages), 60))
             nm = NewModeTask(
@@ -359,7 +369,7 @@ def apply(id):
                     'data': {'mode': 'new', 'new_mode_task_id': nm.id, 'project_id': None},
                 })
             return jsonify({'code': 500, 'message': '创建新模式优化任务失败'})
-
+        #生成项目
         new_project = Project(
             id=str(uuid.uuid4()),
             idea_prompt=optimization_prompt,
@@ -375,10 +385,11 @@ def apply(id):
         source_path = task.file_path
         template_dir = os.path.join(current_app.config['UPLOAD_FOLDER'], new_project.id, 'template')
         os.makedirs(template_dir, exist_ok=True)
-
+        #以source_path路径最后一段作为target_filename
         target_filename = os.path.basename(source_path)
         effective_file_type = task.file_type
         if task.file_type == 'pptx':
+            #区分文件名和拓展名
             pdf_candidate = os.path.splitext(source_path)[0] + '.pdf'
             if os.path.exists(pdf_candidate):
                 source_path = pdf_candidate
@@ -390,7 +401,7 @@ def apply(id):
         if os.path.exists(source_path) and not os.path.exists(dest_path):
             shutil.copy2(source_path, dest_path)
             logger.info(f"[apply] 源文件已复制: {dest_path}")
-
+        #将源文件作为关联文件
         if os.path.exists(task.file_path):
             try:
                 from models import ReferenceFile
@@ -406,9 +417,10 @@ def apply(id):
                 db.session.commit()
             except Exception as e:
                 logger.warning(f"[apply] 关联参考文件失败（非致命）: {e}")
-
+        #计算页数
         from services.diagnosis_service import _count_pages
         total_pages = _count_pages(dest_path, effective_file_type)
+        #将每页与项目进行关联
         if total_pages > 0:
             from models import Page as PageModel
             for i in range(total_pages):
@@ -430,7 +442,7 @@ def apply(id):
                 from models import Task as TaskModel
 
                 app_obj = current_app._get_current_object() if current_app else None
-
+                #诊断任务
                 ren_task = TaskModel(
                     id=str(uuid.uuid4()),
                     project_id=new_project.id,
@@ -443,7 +455,7 @@ def apply(id):
                 renovation_task_id = ren_task.id
 
                 ai_service = get_ai_service()
-
+                #后台异步池进行操作
                 task_manager.submit_task(
                     ren_task.id,
                     process_diagnosis_optimization_task,
