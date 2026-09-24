@@ -200,6 +200,11 @@ export const DiagnosisPage: React.FC = () => {
       if (!projectId) {
         throw new Error('创建优化项目失败，未返回项目ID');
       }
+      // 让 DetailEditor 轮询诊断优化任务，完成后自动刷新页面描述（复用翻新任务的轮询机制）
+      localStorage.setItem('currentProjectId', projectId);
+      if (res?.task_id) {
+        localStorage.setItem('renovationTaskId', res.task_id);
+      }
       show({ message: '优化已应用成功', type: 'success' });
       navigate(`/project/${projectId}/detail`);
     } catch (error: any) {

@@ -22,8 +22,12 @@ logger = logging.getLogger(__name__)
 
 class DiagnosisFatalError(Exception):
     """无法恢复的诊断错误——应立即终止任务而非逐页重试"""
-    pass
-
+    def __init__(self, msg:str,error_code:str='FATAL_DIAGNOSIS'):
+        super().__init__(msg)
+        self.msg = msg
+        self.error_code = error_code
+    def __str__(self):
+        return f'[{self.error_code}] {self.msg}'
 
 # 单页 AI 诊断超时（秒）：防止某页视觉调用挂死拖住整个诊断任务
 _PAGE_DIAG_TIMEOUT = 120
@@ -38,14 +42,10 @@ def _call_with_timeout(fn, timeout: int):
         try:
             return fut.result(timeout=timeout)
         except concurrent.futures.TimeoutError:
-            fut.cancel()
+            ex.shutdown(wait=False)
             raise TimeoutError(f"诊断调用超时（>{timeout}s）")
 
-
-# ---------------------------------------------------------------------------
-# Prompt 模板
-# ---------------------------------------------------------------------------
-
+#生成单页的AI prompt
 def _diagnosis_page_prompt(page_num: int, diagnosis_options: list) -> str:
     """生成单页诊断的 AI prompt"""
     hints = []
@@ -102,7 +102,7 @@ def _diagnosis_page_prompt(page_num: int, diagnosis_options: list) -> str:
 规则：只输出JSON，不要任何解释。无问题的维度返回空数组[]。每个维度最多3条。
 severity只能是high/medium/low。bbox基于图片实际像素位置估算。"""
 
-
+#生成整体的prompt
 def _diagnosis_summary_prompt(all_page_results: list) -> str:
     """生成整体评分摘要的 AI prompt"""
     total_issues = 0
@@ -126,11 +126,7 @@ def _diagnosis_summary_prompt(all_page_results: list) -> str:
 输出严格JSON（不要markdown代码块标记）:
 {{"score": 72, "summary": "整体评价..."}}"""
 
-
-# ---------------------------------------------------------------------------
-# 辅助函数
-# ---------------------------------------------------------------------------
-
+#LibreOffice 一个将PPTX 转化为PDF的一个文件
 def _soffice_candidates() -> list:
     """按优先级返回可用的 LibreOffice 可执行文件候选路径。
 
@@ -155,7 +151,7 @@ def _soffice_candidates() -> list:
             candidates.append(found)
     return candidates
 
-
+#转化PPTX
 def _pptx_to_pdf(pptx_path: str) -> str | None:
     """用 LibreOffice 将 PPTX 转成 PDF，返回 PDF 路径，失败返回 None"""
     import subprocess
@@ -180,7 +176,7 @@ def _pptx_to_pdf(pptx_path: str) -> str | None:
     logger.warning("LibreOffice 未安装或不可用（可用环境变量 SOFFICE_PATH 指定），无法转换 PPTX → PDF")
     return None
 
-
+#将PDF渲染为PIL Image
 def _render_page_to_image(file_path: str, file_type: str, page_num: int):
     """用PyMuPDF渲染指定页为PIL Image，返回Image或None"""
     try:
@@ -211,7 +207,7 @@ def _render_page_to_image(file_path: str, file_type: str, page_num: int):
         logger.warning(f"渲染第{page_num}页失败: {e}")
         return None
 
-
+#获得文件页数
 def _count_pages(file_path: str, file_type: str) -> int:
     """获取文件总页数"""
     if file_type == "pptx":
@@ -222,7 +218,7 @@ def _count_pages(file_path: str, file_type: str) -> int:
         except Exception as e:
             logger.warning(f"PPTX读取页数失败: {e}")
             return 0
-
+    #如果是 PDF
     try:
         import fitz
         doc = fitz.open(file_path)
@@ -232,7 +228,7 @@ def _count_pages(file_path: str, file_type: str) -> int:
     except Exception:
         return 0
 
-
+#从文本中获取json
 def _parse_json(text: str) -> dict:
     """从AI返回文本中提取JSON对象，带容错"""
     text = text.strip()
@@ -248,42 +244,42 @@ def _parse_json(text: str) -> dict:
     # 直接解析
     try:
         return json.loads(text)
-    except json.JSONDecodeError:
-        pass
+    except json.JSONDecodeError as e:
+        print(f'发生错误{e.msg}')
 
     # 正则兜底：找第一个 JSON 对象
     m = re.search(r'\{.*\}', text, re.DOTALL)
     if m:
         try:
             return json.loads(m.group())
-        except json.JSONDecodeError:
-            pass
+        except json.JSONDecodeError as e:
+            print(f'发生错误{e.msg}')
 
     logger.warning(f"无法解析诊断JSON，原文前200字符: {text[:200]}")
     return {}
 
-
+#单页诊断
 def _diagnose_single_page(ai_service, img, page_num: int,
                            diagnosis_options: list, tmp_dir: str) -> dict:
     """诊断单页：存临时文件 → 调AI → 解析JSON → 清理临时文件"""
     tmp_path = None
     try:
-        # 压缩图片以节省token
+        #压缩图片以节省token
         img.thumbnail((1920, 1080))
 
-        # 存临时文件（_generate_text_from_image 需要文件路径）
+        #存临时文件
         fd, tmp_path = tempfile.mkstemp(suffix=".png", dir=tmp_dir)
         os.close(fd)
         img.save(tmp_path, format="PNG")
 
-        # 调AI诊断（带超时，防止单页视觉调用挂死拖住整个任务）
+        #调AI诊断
         prompt = _diagnosis_page_prompt(page_num, diagnosis_options)
         response_text = _call_with_timeout(
             lambda: ai_service._generate_text_from_image(prompt, tmp_path),
-            _PAGE_DIAG_TIMEOUT,
+            _PAGE_DIAG_TIMEOUT,#最大超时时间
         )
 
-        # 解析结果
+        #解析结果
         result = _parse_json(response_text)
         result["page_number"] = page_num
         return result
@@ -294,7 +290,7 @@ def _diagnose_single_page(ai_service, img, page_num: int,
             'api key not valid', 'api_key_invalid', 'permission denied',
             '403', '401', 'unauthorized', 'forbidden', 'authentication',
             'invalid argument', 'invalid_request',
-        ]
+        ]#可能的解析错误的原因
         if any(kw in err_msg for kw in fatal_keywords):
             raise DiagnosisFatalError(str(e)) from e
 
@@ -309,9 +305,9 @@ def _diagnose_single_page(ai_service, img, page_num: int,
         }
     finally:
         if tmp_path and os.path.exists(tmp_path):
-            os.unlink(tmp_path)
+            os.unlink(tmp_path)#删除文件
 
-
+#生成总的诊断结果
 def _generate_summary(ai_service, all_page_results: list) -> dict:
     """汇总所有页诊断结果，调AI生成评分和摘要"""
     try:
@@ -321,7 +317,7 @@ def _generate_summary(ai_service, all_page_results: list) -> dict:
         return result
     except Exception as e:
         logger.error(f"生成诊断摘要失败: {e}")
-        # 兜底：简单计算评分
+        #兜底:简单计算评分
         total_issues = sum(
             len(pr.get(k, [])) for pr in all_page_results
             for k in ["layout_issues", "color_issues", "logic_issues", "text_suggestions"]
@@ -332,7 +328,13 @@ def _generate_summary(ai_service, all_page_results: list) -> dict:
             "score": score,
             "summary": f"共诊断{len(all_page_results)}页，发现{total_issues}个优化点。"
         }
-
+#后台 AI PPT诊断
+"""
+layout表示排版问题
+color颜色问题
+logic逻辑问题
+text文章问题
+"""
 def run_diagnosis_task(task_id: str, app):
     """
     后台执行AI PPT诊断。
@@ -351,7 +353,7 @@ def run_diagnosis_task(task_id: str, app):
         diagnosis = None
         tmp_dir = None
         try:
-            # ---- 1. 获取任务 ----
+            #获得任务
             diagnosis = DiagnosisTask.get_by_id(task_id)
             if diagnosis is None:
                 logger.error(f"诊断任务{task_id}不存在")
@@ -361,28 +363,28 @@ def run_diagnosis_task(task_id: str, app):
             db.session.commit()
             logger.info(f"诊断{task_id}: 开始处理 {diagnosis.file_path}")
 
-            # ---- 2. 获取AI服务 ----
+            #获取AI服务
             from services.ai_service_manager import get_ai_service
             ai_service = get_ai_service()
 
-            # ---- 3. 解析诊断选项 ----
+            #解析诊断选项
             try:
                 options = json.loads(diagnosis.diagnosis_options)
             except (json.JSONDecodeError, TypeError):
                 options = ["layout", "color", "logic", "text"]
 
-            # ---- 4. 获取总页数 ----
+            #获得总页数
             total_pages = _count_pages(diagnosis.file_path, diagnosis.file_type)
             if total_pages == 0:
                 raise ValueError(f"无法读取文件或文件为空: {diagnosis.file_path}")
 
             logger.info(f"诊断{task_id}: 共{total_pages}页, 维度: {options}")
 
-            # 准备临时目录
+            #准备临时目录
             tmp_dir = os.path.join(app.config["UPLOAD_FOLDER"], "_diagnosis_tmp")
             os.makedirs(tmp_dir, exist_ok=True)
 
-            # ---- 5. 逐页诊断 ----
+            #逐页诊断
             all_page_results = []
             for page_num in range(1, total_pages + 1):
                 logger.info(f"诊断{task_id}: 第{page_num}/{total_pages}页")
@@ -401,17 +403,17 @@ def run_diagnosis_task(task_id: str, app):
                         "_render_error": True,
                     })
                     continue
-
+                #对每页进行诊断
                 page_result = _diagnose_single_page(
                     ai_service, img, page_num, options, tmp_dir
                 )
                 all_page_results.append(page_result)
 
-            # ---- 6. 汇总评分 ----
+            #汇总评分
             logger.info(f"诊断{task_id}: 生成整体摘要")
             summary = _generate_summary(ai_service, all_page_results)
 
-            # ---- 7. 写入最终结果 ----
+            #写入最终结果
             final_result = {
                 "summary": summary.get("summary", ""),
                 "score": summary.get("score", 70),
@@ -420,7 +422,7 @@ def run_diagnosis_task(task_id: str, app):
                 "diagnosis_options": options,
                 "total_pages": total_pages,
             }
-
+            #将python 对象解析为json
             diagnosis.result = json.dumps(final_result, ensure_ascii=False)
             diagnosis.status = "COMPLETED"
             diagnosis.completed_at = datetime.utcnow()

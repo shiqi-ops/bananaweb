@@ -1,23 +1,3 @@
-"""
-Dify workflow client for the 新模式 (Dify 生成) feature.
-
-调用 Dify 已发布的工作流 API，返回一份成品 PPTX 文件（或可转为 PPTX 的内容）。
-
-环境变量:
-    DIFY_API_BASE       Dify API 基础地址，形如 https://your-dify.example.com/v1
-                        （自部署一般形如 http://host:port/v1）
-    DIFY_API_KEY        发布工作流后在「API 访问」页拿到的 API Key
-    DIFY_TIMEOUT        请求超时秒数，默认 600（Dify 工作流生成 PPT 可能较慢）
-
-说明:
-    - 未配置 DIFY_API_BASE / DIFY_API_KEY 时 is_dify_configured() 返回 False，
-      上层将使用占位实现（本地模板生成 PPTX），保证整条链路可以先跑通；
-      配置完成后无需改动任何代码即切换到真实 Dify 生成。
-    - 工作流 outputs 支持三种返回形态：
-        1) 文件变量（插件/工具返回的 .pptx 文件 URL）→ 自动下载为本地文件
-        2) markdown / 文本内容 → 返回文本，由上层本地排版成 PPTX
-        3) 结构化 JSON（含 pages）→ 返回文本，由上层解析后排版
-"""
 import logging
 import os
 import re
@@ -49,19 +29,18 @@ def dify_config_summary() -> str:
 
 def _normalize_base(base: str) -> str:
     base = base.rstrip('/')
-    # 允许用户填 https://host/v1 或 https://host（自动补 /v1）
     if not re.search(r'/v1/?$', base):
         base = base + '/v1'
     return base
 
-
+#检查是否超时
 def _timeout() -> int:
     try:
         return int(os.getenv(_ENV_TIMEOUT, '600').strip() or '600')
     except ValueError:
         return 600
 
-
+#网络代理功能
 def _proxies() -> dict | None:
     """Dify 请求代理（可选）。设置 DIFY_PROXY 后走代理，例如 http://127.0.0.1:7890。
 
@@ -71,7 +50,7 @@ def _proxies() -> dict | None:
         return {'http': proxy, 'https': proxy}
     return None
 
-
+#深度遍历
 def _iter_urls(obj, depth: int = 0):
     """深度遍历 outputs，收集可能指向文件的 http(s) URL。"""
     if depth > 6:
@@ -107,6 +86,7 @@ def _download_pptx(url: str, api_key: str):
             return None
         fd, tmp = tempfile.mkstemp(suffix='.pptx')
         os.close(fd)
+        #将下载的东西写入临时的文件
         with open(tmp, 'wb') as f:
             f.write(data)
         return tmp
@@ -130,8 +110,8 @@ def _extract_content_text(outputs) -> str | None:
         import json
         if outputs:
             return json.dumps(outputs, ensure_ascii=False)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.error(f'{e}，请重新尝试')
     return None
 
 
